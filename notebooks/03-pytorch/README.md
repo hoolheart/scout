@@ -11,11 +11,11 @@ python -m ipykernel install --user --name pytorch
 conda deactivate
 ```
 
-For the platform with CUDA 11.7 (lastest on Aug 21, 2022),
+For the platform with CUDA 12.1 (lastest on Nov 27, 2023),
 the third line should be
 
 ```shell
-conda install pytorch torchvision torchaudio pytorch-cuda=11.7 -c pytorch -c nvidia
+conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
 ```
 
 ## Dive into Deep Learning
