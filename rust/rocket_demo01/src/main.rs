@@ -1,18 +1,10 @@
 #[macro_use] extern crate rocket;
 
-#[get("/")]
-fn index() -> &'static str {
-    "Hello, Rocket!"
-}
-
-#[get("/salute/<name>")]
-fn salute(name: &str) -> String {
-    format!("Hello, {}!", name)
-}
+use rocket_demo01::services::tests;
 
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![index, salute])
-        .mount("/api/v0", routes![salute])
+        .mount("/", routes![tests::index, tests::salute])
+        .mount("/api/v0", routes![tests::salute])
 }
