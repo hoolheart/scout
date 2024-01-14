@@ -1,10 +1,19 @@
 #[macro_use] extern crate rocket;
-
-use rocket_demo01::services::tests;
+use rocket::fs::{FileServer, relative};
+use rocket_demo01::services::{tests, task};
 
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![tests::index, tests::salute])
-        .mount("/api/v0", routes![tests::salute])
+        .mount("/public", FileServer::from(relative!("static")))
+        .mount("/test", routes![
+            tests::index,
+            tests::salute,
+            tests::compare,
+            tests::max,
+        ])
+        .mount("/task", routes![
+            task::get_all_tasks,
+            task::commit_task,
+        ])
 }
