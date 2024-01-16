@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
-use rocket::http::uri::{Segments, fmt::Path};
+use rocket::http::{uri::{Segments, fmt::Path}, CookieJar};
+use rocket::response::{Flash, Redirect};
 
 #[get("/")]
 pub fn index() -> &'static str {
@@ -41,4 +42,42 @@ pub fn max(segments: Segments<Path>) -> String {
         }
         format!("Found max: {}!", rst)
     }
+}
+
+#[get("/count_tapped")]
+pub fn count_tapped(cookies: &CookieJar<'_>) -> String {
+    match cookies.get("tapped") {
+        Some(tapped) => String::from(tapped.value()),
+        None => String::from("0"),
+    }
+}
+
+#[post("/tap")]
+pub fn tap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
+    let cookie = cookies.get("tapped");
+    if let Some(tapped) = cookie {
+        let count: u32 = match tapped.value().parse() {
+            Ok(val) => val,
+            Err(_) => 0,
+        };
+        cookies.add(("tapped", format!("{}", count + 1)));
+    } else {
+        cookies.add(("tapped", "1"));
+    }
+    Flash::success(Redirect::to("/test/count_tapped"), "Succeed to tap")
+}
+
+#[post("/untap")]
+pub fn untap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
+    let cookie = cookies.get("tapped");
+    if let Some(tapped) = cookie {
+        let count: u32 = match tapped.value().parse() {
+            Ok(val) => val,
+            Err(_) => 0,
+        };
+        if count > 0 {
+            cookies.add(("tapped", format!("{}", count - 1)));
+        }
+    }
+    Flash::success(Redirect::to("/test/count_tapped"), "Succeed to tap")
 }
