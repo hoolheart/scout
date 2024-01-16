@@ -8,6 +8,7 @@ fn rocket() -> _ {
         .mount("/public/static", FileServer::from(relative!("static")))
         .mount("/public", routes![
             util::upload,
+            util::download,
             util::debug,
         ])
         .mount("/test", routes![
@@ -21,6 +22,7 @@ fn rocket() -> _ {
         ])
         .mount("/task", routes![
             task::get_all_tasks,
-            task::commit_task,
+            task::commit_task_by_json,
+            task::commit_task_by_form,
         ])
 }
