@@ -1,19 +1,23 @@
-use std::cmp::Ordering;
-use rocket::http::{uri::{Segments, fmt::Path}, CookieJar};
+use rocket::fairing::AdHoc;
+use rocket::http::{
+    uri::{fmt::Path, Segments},
+    CookieJar,
+};
 use rocket::response::{Flash, Redirect};
+use std::cmp::Ordering;
 
 #[get("/")]
-pub fn index() -> &'static str {
+fn index() -> &'static str {
     "Hello, Rocket!"
 }
 
 #[get("/salute/<name>")]
-pub fn salute(name: &str) -> String {
+fn salute(name: &str) -> String {
     format!("Hello, {}!", name)
 }
 
 #[get("/compare/<num1>/<num2>")]
-pub fn compare(num1: i32, num2: i32) -> &'static str {
+fn compare(num1: i32, num2: i32) -> &'static str {
     match num1.cmp(&num2) {
         Ordering::Less => "less",
         Ordering::Greater => "greater",
@@ -22,7 +26,7 @@ pub fn compare(num1: i32, num2: i32) -> &'static str {
 }
 
 #[get("/max/<segments..>")]
-pub fn max(segments: Segments<Path>) -> String {
+fn max(segments: Segments<Path>) -> String {
     if segments.len() == 0 {
         String::from("empty")
     } else {
@@ -45,7 +49,7 @@ pub fn max(segments: Segments<Path>) -> String {
 }
 
 #[get("/count_tapped")]
-pub fn count_tapped(cookies: &CookieJar<'_>) -> String {
+fn count_tapped(cookies: &CookieJar<'_>) -> String {
     match cookies.get("tapped") {
         Some(tapped) => String::from(tapped.value()),
         None => String::from("0"),
@@ -53,7 +57,7 @@ pub fn count_tapped(cookies: &CookieJar<'_>) -> String {
 }
 
 #[post("/tap")]
-pub fn tap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
+fn tap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
     let cookie = cookies.get("tapped");
     if let Some(tapped) = cookie {
         let count: u32 = match tapped.value().parse() {
@@ -68,7 +72,7 @@ pub fn tap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
 }
 
 #[post("/untap")]
-pub fn untap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
+fn untap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
     let cookie = cookies.get("tapped");
     if let Some(tapped) = cookie {
         let count: u32 = match tapped.value().parse() {
@@ -80,4 +84,13 @@ pub fn untap(cookies: &CookieJar<'_>) -> Flash<Redirect> {
         }
     }
     Flash::success(Redirect::to("/test/count_tapped"), "Succeed to tap")
+}
+
+pub fn stage() -> AdHoc {
+    AdHoc::on_ignite("Tests", |rocket| async {
+        rocket.mount(
+            "/test",
+            routes![index, salute, compare, max, count_tapped, tap, untap,],
+        )
+    })
 }
