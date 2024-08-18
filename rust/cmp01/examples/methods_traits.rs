@@ -22,12 +22,18 @@ impl Race {
 }
 
 trait Dimensional {
-    fn get_dimension(&self) -> u32;
+    fn get_dimension(&self) -> usize;
 }
 
 #[derive(Debug)]
 struct Cooridinate {
-    indexes: Vec<u32>,
+    indexes: Vec<i32>,
+}
+
+impl Dimensional for Cooridinate {
+    fn get_dimension(&self) -> usize {
+        self.indexes.len()
+    }
 }
 
 fn main() {
@@ -38,4 +44,7 @@ fn main() {
     race.add_lap(71);
     race.add_lap(99);
     race.print_laps();
+
+    let dim0: &dyn Dimensional = &Cooridinate{indexes: [-5, 7].to_vec()};
+    println!("Dimensional {}", dim0.get_dimension());
 }
