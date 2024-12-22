@@ -1,0 +1,10 @@
+BasedOnStyle: LLVM
+Standard: Latest
+UseTab: Never
+IndentWidth: 4
+AccessModifierOffset: -4
+ColumnLimit: 80
+BreakBeforeBraces: Attach
+PointerAlignment: Right
+IndentCaseLabels: false
+SortIncludes: Never
