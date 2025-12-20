@@ -74,6 +74,7 @@ public:
 
     // 配置选项
     void setAutoLifecycleManagement(bool enabled) { auto_lifecycle_enabled_ = enabled; }
+    void enableAutoLifecycle(bool enabled) { auto_lifecycle_enabled_ = enabled; }
     bool isAutoLifecycleManagementEnabled() const { return auto_lifecycle_enabled_; }
     void setVerboseLogging(bool enabled) { verbose_logging_ = enabled; }
     bool isVerboseLoggingEnabled() const { return verbose_logging_; }

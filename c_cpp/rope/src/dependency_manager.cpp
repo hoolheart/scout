@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <queue>
+#include <functional>
 
 namespace rope {
 
@@ -384,7 +386,13 @@ void DependencyManager::stopAllComponents() {
     for (const auto& name : order) {
         auto component = getComponent(name);
         if (component && component->getState() == Component::State::STARTED) {
-            stopComponent(name);
+            // 在停止所有组件时，跳过依赖检查
+            try {
+                component->executeStop();
+                logVerbose("Component stopped: " + name);
+            } catch (const std::exception& e) {
+                logError("Failed to stop component " + name + ": " + e.what());
+            }
         }
     }
 }
@@ -399,12 +407,14 @@ void DependencyManager::buildDependencyGraph(std::map<std::string, std::vector<s
         graph[name] = std::vector<std::string>();
     }
 
-    // 添加依赖边
+    // 添加依赖边：如果A依赖B，那么边是 B -> A
+    // 这样在拓扑排序中，B会先于A被处理
     for (const auto& [name, component] : components_) {
         for (const auto& dependency : component->getDependencies()) {
             auto matches = findMatchingComponents(dependency);
             for (const auto& match : matches) {
-                graph[name].push_back(match);
+                // 如果name依赖match，那么边是 match -> name
+                graph[match].push_back(name);
             }
         }
     }
@@ -444,7 +454,8 @@ std::vector<std::string> DependencyManager::topologicalSort() const {
         }
     }
 
-    std::queue<std::string> queue;
+    // 使用优先队列确保确定性排序（按字母顺序）
+    std::priority_queue<std::string, std::vector<std::string>, std::greater<std::string>> queue;
     for (const auto& [node, degree] : in_degree) {
         if (degree == 0) {
             queue.push(node);
@@ -453,7 +464,7 @@ std::vector<std::string> DependencyManager::topologicalSort() const {
 
     std::vector<std::string> result;
     while (!queue.empty()) {
-        auto node = queue.front();
+        auto node = queue.top();
         queue.pop();
         result.push_back(node);
 

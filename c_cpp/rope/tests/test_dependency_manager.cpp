@@ -156,6 +156,9 @@ TEST_F(DependencyManagerTest, DependencyResolution) {
     // 测试启动顺序
     auto startup_order = manager->getStartupOrder();
     EXPECT_EQ(startup_order.size(), 3);
+
+    // 验证依赖关系：service2依赖service1，service3依赖service2
+    // 所以service1应该最先启动，service3应该最后启动
     EXPECT_EQ(startup_order[0], "service1");
     EXPECT_EQ(startup_order[1], "service2");
     EXPECT_EQ(startup_order[2], "service3");
@@ -163,6 +166,8 @@ TEST_F(DependencyManagerTest, DependencyResolution) {
     // 测试停止顺序
     auto shutdown_order = manager->getShutdownOrder();
     EXPECT_EQ(shutdown_order.size(), 3);
+
+    // 停止顺序应该与启动顺序相反
     EXPECT_EQ(shutdown_order[0], "service3");
     EXPECT_EQ(shutdown_order[1], "service2");
     EXPECT_EQ(shutdown_order[2], "service1");
@@ -240,9 +245,16 @@ TEST_F(DependencyManagerTest, LifecycleManagement) {
     component2->setStartFunction<TestService>([](std::shared_ptr<TestService> s) { s->start(); });
     component2->setStopFunction<TestService>([](std::shared_ptr<TestService> s) { s->stop(); });
 
+    // 禁用自动生命周期管理，使用手动控制
+    manager->enableAutoLifecycle(false);
+
     manager->registerComponent(component1);
     manager->registerComponent(component2);
     manager->run();
+
+    // 确保组件处于INITIALIZED状态
+    EXPECT_EQ(component1->getState(), Component::State::INITIALIZED);
+    EXPECT_EQ(component2->getState(), Component::State::INITIALIZED);
 
     // service2 依赖 service1
     Dependency dep("service1", Dependency::Type::REQUIRED);
