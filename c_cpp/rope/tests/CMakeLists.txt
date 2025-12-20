@@ -66,6 +66,7 @@ if(GTest_FOUND OR EXISTS "${CMAKE_BINARY_DIR}/_deps/googletest-src")
     # 测试可执行文件
     add_executable(rope_tests
         test_rope.cpp
+        test_dependency_manager.cpp
     )
 
     # 链接库

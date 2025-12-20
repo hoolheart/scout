@@ -23,6 +23,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 # 源文件
 set(ROPE_SOURCES
     src/rope.cpp
+    src/dependency.cpp
+    src/dependency_manager.cpp
 )
 
 # 头文件
