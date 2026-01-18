@@ -1,0 +1,76 @@
+# LaTeX 编译输出文件
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.bbl
+*.blg
+*.brf
+*.cb
+*.cb2
+*.dvi
+*.ps
+*.pdf
+
+# LaTeX 临时文件
+*.toc
+*.lof
+*.lot
+*.idx
+*.ind
+*.ilg
+*.nav
+*.snm
+*.vrb
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.xdv
+
+# 备份文件
+*~
+*.bak
+*.backup
+*.swp
+*.swo
+*.tmp
+
+# 编辑器文件
+.vscode/
+.idea/
+*.sublime-*
+
+# OS 文件
+.DS_Store
+Thumbs.db
+
+# latexmk 输出
+latexmk.flc
+latexmk.fdb_latexmk
+
+# 特定编译器输出
+*.bcf
+*.run.xml
+*.toc
+*.upa
+
+# 文档相关
+*.ptc
+*.maf
+*.mtc*
+*.mtc0
+*.figure/
+*.t2d/
+
+# 图表和图片生成文件
+*.gnuplot
+
+# 其他
+*.spl
+*.brf
+*.djs
