@@ -1,0 +1,24 @@
+{
+  "name": "power-grid-training",
+  "version": "1.0.0",
+  "description": "电网基础知识培训材料",
+  "main": "index.js",
+  "scripts": {
+    "convert": "bash convert-to-pdf.sh",
+    "convert:pdf": "bash convert-to-pdf.sh pdf",
+    "convert:html": "bash convert-to-pdf.sh html",
+    "convert:all": "bash convert-to-pdf.sh all",
+    "convert:chrome": "bash convert-to-pdf.sh chrome"
+  },
+  "keywords": [
+    "marp",
+    "presentation",
+    "power-grid",
+    "training"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@marp-team/marp-cli": "^4.0.0"
+  }
+}
