@@ -1,0 +1,10 @@
+[target.thumbv7em-none-eabihf]
+runner = "qemu-system-arm -cpu cortex-m4 -machine olimex-stm32-h405 -nographic -monitor none -semihosting-config enable=on,target=native -kernel"
+
+rustflags = [
+  "-C", "linker=rust-lld",
+  "-C", "link-arg=-Tlink.x",
+]
+
+[build]
+target = "thumbv7em-none-eabihf"
