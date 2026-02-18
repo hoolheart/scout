@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 
 // Re-export file_service functions for FFI
 use crate::file_service;
+use crate::markdown;
+use crate::watcher;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 /// Represents a markdown note file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -108,13 +112,27 @@ pub struct WatcherConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FileEvent {
     /// File was created.
-    Created { path: String },
+    Created {
+        /// Path to the created file.
+        path: String,
+    },
     /// File was modified.
-    Modified { path: String },
+    Modified {
+        /// Path to the modified file.
+        path: String,
+    },
     /// File was deleted.
-    Deleted { path: String },
+    Deleted {
+        /// Path to the deleted file.
+        path: String,
+    },
     /// File was renamed.
-    Renamed { from: String, to: String },
+    Renamed {
+        /// Original path before rename.
+        from: String,
+        /// New path after rename.
+        to: String,
+    },
 }
 
 /// Settings for the markdown parser.
@@ -197,10 +215,7 @@ pub async fn rust_read_file(path: String) -> std::result::Result<String, String>
 /// # Returns
 ///
 /// Returns Ok(()) on success, or an error message.
-pub async fn rust_write_file(
-    path: String,
-    content: String,
-) -> std::result::Result<(), String> {
+pub async fn rust_write_file(path: String, content: String) -> std::result::Result<(), String> {
     match file_service::write_file(path, content).await {
         Ok(()) => Ok(()),
         Err(e) => Err(e.to_user_message()),
@@ -216,9 +231,7 @@ pub async fn rust_write_file(
 /// # Returns
 ///
 /// Returns a vector of FileEntryDto on success, or an error message.
-pub async fn rust_read_directory(
-    path: String,
-) -> std::result::Result<Vec<FileEntryDto>, String> {
+pub async fn rust_read_directory(path: String) -> std::result::Result<Vec<FileEntryDto>, String> {
     match file_service::read_directory(path).await {
         Ok(entries) => Ok(entries.into_iter().map(FileEntryDto::from).collect()),
         Err(e) => Err(e.to_user_message()),
@@ -428,4 +441,312 @@ mod tests {
         assert_eq!(dto.size, 100);
         assert_eq!(dto.modified_time, Some(1234567890000)); // milliseconds
     }
+
+    #[test]
+    fn test_parse_result_dto_conversion() {
+        let result = markdown::ParseResult {
+            html: "<h1>Test</h1>".to_string(),
+            word_count: 10,
+            char_count: 50,
+            headings: vec![markdown::Heading {
+                level: 1,
+                text: "Test".to_string(),
+                anchor: "test".to_string(),
+            }],
+        };
+
+        let dto = ParseResultDto::from(result);
+
+        assert_eq!(dto.html, "<h1>Test</h1>");
+        assert_eq!(dto.word_count, 10);
+        assert_eq!(dto.char_count, 50);
+        assert_eq!(dto.headings.len(), 1);
+        assert_eq!(dto.headings[0].text, "Test");
+    }
+
+    #[test]
+    fn test_heading_dto_conversion() {
+        let heading = markdown::Heading {
+            level: 2,
+            text: "Section".to_string(),
+            anchor: "section".to_string(),
+        };
+
+        let dto = HeadingDto::from(heading);
+
+        assert_eq!(dto.level, 2);
+        assert_eq!(dto.text, "Section");
+        assert_eq!(dto.anchor, "section");
+    }
+}
+
+// =============================================================================
+// Task R4 & R6: FFI API Functions
+// =============================================================================
+
+/// DTO for markdown parse results.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[frb]
+pub struct ParseResultDto {
+    /// Rendered HTML content.
+    pub html: String,
+    /// Word count.
+    pub word_count: u32,
+    /// Character count.
+    pub char_count: u32,
+    /// Extracted headings.
+    pub headings: Vec<HeadingDto>,
+}
+
+impl From<markdown::ParseResult> for ParseResultDto {
+    fn from(result: markdown::ParseResult) -> Self {
+        Self {
+            html: result.html,
+            word_count: result.word_count,
+            char_count: result.char_count,
+            headings: result.headings.into_iter().map(HeadingDto::from).collect(),
+        }
+    }
+}
+
+/// DTO for markdown headings.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[frb]
+pub struct HeadingDto {
+    /// Heading level (1-6).
+    pub level: u8,
+    /// Heading text.
+    pub text: String,
+    /// Heading anchor ID.
+    pub anchor: String,
+}
+
+impl From<markdown::Heading> for HeadingDto {
+    fn from(heading: markdown::Heading) -> Self {
+        Self {
+            level: heading.level,
+            text: heading.text,
+            anchor: heading.anchor,
+        }
+    }
+}
+
+/// DTO for file system events.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[frb]
+pub enum FileSystemEventDto {
+    /// File or directory was created.
+    Created {
+        /// Path to the created file or directory.
+        path: String,
+        /// Whether the created path is a directory.
+        is_dir: bool,
+    },
+    /// File was modified.
+    Modified {
+        /// Path to the modified file.
+        path: String,
+    },
+    /// File was deleted.
+    Deleted {
+        /// Path to the deleted file.
+        path: String,
+    },
+    /// File was renamed.
+    Renamed {
+        /// Original path before rename.
+        old_path: String,
+        /// New path after rename.
+        new_path: String,
+    },
+}
+
+impl From<watcher::FileSystemEvent> for FileSystemEventDto {
+    fn from(event: watcher::FileSystemEvent) -> Self {
+        match event {
+            watcher::FileSystemEvent::Created { path, is_dir } => {
+                FileSystemEventDto::Created { path, is_dir }
+            }
+            watcher::FileSystemEvent::Modified { path } => FileSystemEventDto::Modified { path },
+            watcher::FileSystemEvent::Deleted { path } => FileSystemEventDto::Deleted { path },
+            watcher::FileSystemEvent::Renamed { old_path, new_path } => {
+                FileSystemEventDto::Renamed { old_path, new_path }
+            }
+        }
+    }
+}
+
+/// Parse markdown content and return comprehensive result.
+///
+/// # Arguments
+///
+/// * `content` - The markdown content to parse.
+///
+/// # Returns
+///
+/// Returns a `ParseResultDto` containing HTML, word count, char count, and headings.
+#[frb(sync)]
+pub fn rust_parse_markdown(content: String) -> ParseResultDto {
+    let result = markdown::parse_markdown(&content);
+    ParseResultDto::from(result)
+}
+
+/// Convert markdown to HTML.
+///
+/// # Arguments
+///
+/// * `content` - The markdown content to convert.
+///
+/// # Returns
+///
+/// Returns the rendered HTML string.
+#[frb(sync)]
+pub fn rust_markdown_to_html(content: String) -> String {
+    markdown::markdown_to_html(&content)
+}
+
+/// Extract plain text from markdown.
+///
+/// # Arguments
+///
+/// * `content` - The markdown content.
+///
+/// # Returns
+///
+/// Returns the plain text without markdown syntax.
+#[frb(sync)]
+pub fn rust_extract_plain_text(content: String) -> String {
+    markdown::extract_plain_text(&content)
+}
+
+/// Count words in text.
+///
+/// # Arguments
+///
+/// * `text` - The plain text to count.
+///
+/// # Returns
+///
+/// Returns a tuple of (word_count, char_count).
+#[frb(sync)]
+pub fn rust_count_words(text: String) -> (u32, u32) {
+    markdown::count_words(&text)
+}
+
+/// Global watcher state for FFI workspace watching.
+static WATCHER_STATE: once_cell::sync::Lazy<Arc<Mutex<Option<WatcherState>>>> =
+    once_cell::sync::Lazy::new(|| Arc::new(Mutex::new(None)));
+
+/// Internal watcher state struct.
+struct WatcherState {
+    watch_id: String,
+    watcher: watcher::FileWatcher,
+}
+
+/// Start watching a workspace directory.
+///
+/// # Arguments
+///
+/// * `path` - Path to the workspace directory to watch.
+///
+/// # Returns
+///
+/// Returns a watch ID on success, or an error message on failure.
+pub async fn rust_watch_workspace(path: String) -> std::result::Result<String, String> {
+    let watch_id = format!("watch_{:x}", md5_hash(&path));
+
+    let config = WatcherConfig {
+        recursive: true,
+        extensions: vec![
+            ".md".to_string(),
+            ".markdown".to_string(),
+            ".mdown".to_string(),
+        ],
+        ignore_hidden: true,
+    };
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel(100);
+    let watcher = watcher::FileWatcher::new(tx, config).map_err(|e| e.to_user_message())?;
+
+    watcher
+        .watch(&path)
+        .await
+        .map_err(|e| e.to_user_message())?;
+
+    // Store watcher in global state
+    let mut state = WATCHER_STATE.lock().await;
+    *state = Some(WatcherState {
+        watch_id: watch_id.clone(),
+        watcher,
+    });
+
+    // Spawn event processing task
+    tokio::spawn(async move {
+        while let Some(_event) = rx.recv().await {
+            // Events would be sent to Flutter via a stream sink in a real implementation
+            // For now, we just log them
+            tracing::debug!("Workspace file event received");
+        }
+    });
+
+    tracing::info!("Started watching workspace: {} -> {}", watch_id, path);
+
+    Ok(watch_id)
+}
+
+/// Stop watching a workspace.
+///
+/// # Arguments
+///
+/// * `watch_id` - The watch ID returned by `rust_watch_workspace`.
+///
+/// # Returns
+///
+/// Returns Ok(()) on success, or an error message on failure.
+pub async fn rust_unwatch_workspace(watch_id: String) -> std::result::Result<(), String> {
+    let mut state = WATCHER_STATE.lock().await;
+
+    if let Some(watcher_state) = state.take() {
+        if watcher_state.watch_id == watch_id {
+            watcher_state
+                .watcher
+                .stop()
+                .await
+                .map_err(|e| e.to_user_message())?;
+            tracing::info!("Stopped watching workspace: {}", watch_id);
+            Ok(())
+        } else {
+            Err("Invalid watch ID".to_string())
+        }
+    } else {
+        Err("No active watcher found".to_string())
+    }
+}
+
+/// Check if a workspace is being watched.
+///
+/// # Arguments
+///
+/// * `watch_id` - The watch ID to check.
+///
+/// # Returns
+///
+/// Returns true if the workspace is being watched.
+pub async fn rust_is_watching(watch_id: String) -> bool {
+    let state = WATCHER_STATE.lock().await;
+    if let Some(ref watcher_state) = *state {
+        watcher_state.watch_id == watch_id
+    } else {
+        false
+    }
+}
+
+/// Simple md5 hash helper.
+fn md5_hash(data: &str) -> u64 {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    let mut hasher = DefaultHasher::new();
+    data.hash(&mut hasher);
+    hasher.finish()
 }

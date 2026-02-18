@@ -181,6 +181,48 @@ class RustService {
     }
   }
 
+  /// Start watching a workspace directory.
+  ///
+  /// Returns a watch ID that can be used to stop watching.
+  /// Throws [RustException] if watching fails.
+  Future<String> watchWorkspace(String dirPath) async {
+    _ensureInitialized();
+    try {
+      // For now, this is a stub implementation since the FFI API
+      // may not have this method fully implemented yet
+      debugPrint('Starting workspace watch for: $dirPath');
+      // Return a generated watch ID based on the path hash
+      return 'watch_${dirPath.hashCode}';
+    } catch (e) {
+      throw RustException('Failed to watch workspace "$dirPath": $e');
+    }
+  }
+
+  /// Stop watching a workspace.
+  ///
+  /// Throws [RustException] if unwatching fails.
+  Future<void> unwatchWorkspace(String watchId) async {
+    _ensureInitialized();
+    try {
+      debugPrint('Stopping workspace watch: $watchId');
+      // Stub implementation
+    } catch (e) {
+      throw RustException('Failed to unwatch workspace "$watchId": $e');
+    }
+  }
+
+  /// Check if a workspace is currently being watched.
+  Future<bool> isWatching(String watchId) async {
+    _ensureInitialized();
+    try {
+      // Stub implementation
+      return false;
+    } catch (e) {
+      debugPrint('Error checking watch status: $e');
+      return false;
+    }
+  }
+
   /// Convert a FileEntryDto to a FileEntry model.
   FileEntry _mapFileEntryDto(FileEntryDto dto) {
     return FileEntry(

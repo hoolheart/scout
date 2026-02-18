@@ -19,6 +19,7 @@ dependencies:
   flutter_code_editor: ^0.3.0
   flutter_markdown: ^0.6.18
   window_manager: ^0.3.0
+  url_launcher: ^6.2.0
   
   # Utilities
   path: ^1.8.3
