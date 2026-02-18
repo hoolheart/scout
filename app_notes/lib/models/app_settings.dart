@@ -1,0 +1,97 @@
+/// App settings model for application preferences.
+library;
+
+import 'package:flutter/material.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part 'app_settings.freezed.dart';
+part 'app_settings.g.dart';
+
+/// Represents application-wide settings and preferences.
+@freezed
+class AppSettings with _$AppSettings {
+  /// Creates new app settings.
+  const factory AppSettings({
+    /// Current theme mode (light, dark, or system).
+    @Default(ThemeMode.system) ThemeMode themeMode,
+
+    /// Font size for the editor.
+    @Default(16.0) double editorFontSize,
+
+    /// Font family for the editor.
+    @Default('JetBrains Mono') String editorFontFamily,
+
+    /// List of recently opened workspace paths.
+    @Default([]) List<String> recentWorkspaces,
+
+    /// Whether auto-save is enabled.
+    @Default(true) bool autoSave,
+
+    /// Auto-save delay in milliseconds.
+    @Default(2000) int autoSaveDelayMs,
+
+    /// Whether the preview panel is visible.
+    @Default(true) bool showPreview,
+
+    /// Width of the sidebar in pixels.
+    @Default(250.0) double sidebarWidth,
+  }) = _AppSettings;
+
+  /// Creates AppSettings from JSON.
+  factory AppSettings.fromJson(Map<String, dynamic> json) =>
+      _$AppSettingsFromJson(json);
+
+  const AppSettings._();
+
+  /// Minimum allowed font size.
+  static const double minFontSize = 8.0;
+
+  /// Maximum allowed font size.
+  static const double maxFontSize = 32.0;
+
+  /// Minimum allowed sidebar width.
+  static const double minSidebarWidth = 150.0;
+
+  /// Maximum allowed sidebar width.
+  static const double maxSidebarWidth = 500.0;
+
+  /// Returns true if there are recent workspaces.
+  bool get hasRecentWorkspaces => recentWorkspaces.isNotEmpty;
+
+  /// Returns clamped font size within valid range.
+  double get clampedFontSize => editorFontSize.clamp(minFontSize, maxFontSize);
+
+  /// Returns clamped sidebar width within valid range.
+  double get clampedSidebarWidth =>
+      sidebarWidth.clamp(minSidebarWidth, maxSidebarWidth);
+}
+
+/// Custom JSON converter for ThemeMode.
+class ThemeModeConverter implements JsonConverter<ThemeMode, String> {
+  /// Creates a new theme mode converter.
+  const ThemeModeConverter();
+
+  @override
+  ThemeMode fromJson(String json) {
+    switch (json) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
+
+  @override
+  String toJson(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.system:
+        return 'system';
+    }
+  }
+}

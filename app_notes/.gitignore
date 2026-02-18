@@ -1,0 +1,39 @@
+# Flutter/Dart specific
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+pubspec.lock
+
+# Generated code
+*.g.dart
+*.freezed.dart
+lib/src/rust/
+
+# Rust specific
+rust/target/
+rust/Cargo.lock
+*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+coverage/
+.test_coverage.dart
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
