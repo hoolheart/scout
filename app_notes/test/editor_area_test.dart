@@ -2,6 +2,8 @@
 library;
 
 import 'package:app_notes/models/models.dart';
+import 'package:app_notes/services/settings_service.dart';
+import 'package:app_notes/state/app_state.dart';
 import 'package:app_notes/state/state.dart';
 import 'package:app_notes/ui/layout/editor_area.dart';
 import 'package:app_notes/ui/widgets/markdown_editor.dart';
@@ -9,14 +11,21 @@ import 'package:app_notes/ui/widgets/markdown_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('EditorArea', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+    });
+
     testWidgets('shows empty state when no files open', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _EmptyEditorState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -29,10 +38,15 @@ void main() {
     });
 
     testWidgets('shows tab bar when files are open', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _MockEditorState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -44,10 +58,15 @@ void main() {
     });
 
     testWidgets('shows editor when file is active', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _MockEditorState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -59,11 +78,16 @@ void main() {
     });
 
     testWidgets('shows preview when enabled', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _MockEditorState()),
             previewStateProvider.overrideWith(() => _EnabledPreviewState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -76,11 +100,16 @@ void main() {
     });
 
     testWidgets('hides preview when disabled', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _MockEditorState()),
             previewStateProvider.overrideWith(() => _DisabledPreviewState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -93,10 +122,15 @@ void main() {
     });
 
     testWidgets('shows dirty indicator on unsaved changes', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _DirtyEditorState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -108,11 +142,18 @@ void main() {
     });
 
     testWidgets('can close tab', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       final mockState = _MockEditorState();
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [editorStateProvider.overrideWith(() => mockState)],
+          overrides: [
+            editorStateProvider.overrideWith(() => mockState),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
+          ],
           child: const MaterialApp(home: EditorArea()),
         ),
       );
@@ -127,11 +168,18 @@ void main() {
     });
 
     testWidgets('can switch active file by tapping tab', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       final mockState = _MultiFileEditorState();
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [editorStateProvider.overrideWith(() => mockState)],
+          overrides: [
+            editorStateProvider.overrideWith(() => mockState),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
+          ],
           child: const MaterialApp(home: EditorArea()),
         ),
       );
@@ -146,10 +194,15 @@ void main() {
     });
 
     testWidgets('save button enabled only on changes', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _CleanEditorState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -165,10 +218,15 @@ void main() {
     });
 
     testWidgets('save button enabled when changes exist', (tester) async {
+      final prefs = await SharedPreferences.getInstance();
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             editorStateProvider.overrideWith(() => _DirtyEditorState()),
+            settingsServiceProvider.overrideWithValue(SettingsService(prefs)),
+            editorPreviewRatioProvider.overrideWith(
+              () => _MockEditorPreviewRatio(),
+            ),
           ],
           child: const MaterialApp(home: EditorArea()),
         ),
@@ -260,6 +318,11 @@ class _EnabledPreviewState extends PreviewState {
 class _DisabledPreviewState extends PreviewState {
   @override
   bool build() => false;
+}
+
+class _MockEditorPreviewRatio extends EditorPreviewRatio {
+  @override
+  double build() => 0.5;
 }
 
 class _MultiFileEditorState extends EditorState {

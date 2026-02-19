@@ -1,6 +1,7 @@
 /// Preview state management using Riverpod.
 library;
 
+import 'package:app_notes/models/app_settings.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'preview_state.g.dart';
@@ -9,7 +10,16 @@ part 'preview_state.g.dart';
 @riverpod
 class PreviewState extends _$PreviewState {
   @override
-  bool build() => true;
+  bool build() {
+    // Initialize from AppSettings if available
+    // For now, default to true
+    return true;
+  }
+
+  /// Initialize the preview state from settings.
+  void initializeFromSettings(AppSettings settings) {
+    state = settings.showPreview;
+  }
 
   /// Toggle preview visibility.
   void toggle() {

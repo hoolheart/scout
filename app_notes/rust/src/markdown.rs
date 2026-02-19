@@ -8,6 +8,276 @@ use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
+// =============================================================================
+// Core Types for Task R4
+// =============================================================================
+
+/// Markdown parsing result for FFI API.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ParseResult {
+    /// Rendered HTML content.
+    pub html: String,
+    /// Word count.
+    pub word_count: u32,
+    /// Character count.
+    pub char_count: u32,
+    /// Extracted headings.
+    pub headings: Vec<Heading>,
+}
+
+/// Represents a markdown heading with anchor.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Heading {
+    /// Heading level (1-6).
+    pub level: u8,
+    /// Heading text.
+    pub text: String,
+    /// Heading anchor ID.
+    pub anchor: String,
+}
+
+// =============================================================================
+// Core API Functions for Task R4
+// =============================================================================
+
+/// Parse markdown content and return comprehensive parsing result.
+///
+/// # Arguments
+///
+/// * `content` - The markdown content to parse.
+///
+/// # Returns
+///
+/// Returns a `ParseResult` containing HTML, word count, char count, and headings.
+///
+/// # Example
+///
+/// ```rust
+/// use app_notes_rust::markdown::parse_markdown;
+///
+/// let result = parse_markdown("# Hello\n\nThis is a test.");
+/// assert!(result.html.contains("<h1>"));
+/// assert_eq!(result.word_count, 5); // "Hello", "This", "is", "a", "test."
+/// ```
+pub fn parse_markdown(content: &str) -> ParseResult {
+    let html = markdown_to_html(content);
+    let plain_text = extract_plain_text(content);
+    let (word_count, char_count) = count_words(&plain_text);
+    let headings = extract_headings(content);
+
+    ParseResult {
+        html,
+        word_count,
+        char_count,
+        headings,
+    }
+}
+
+/// Convert markdown content to HTML.
+///
+/// # Arguments
+///
+/// * `content` - The markdown content to convert.
+///
+/// # Returns
+///
+/// Returns the rendered HTML string with GFM features enabled.
+///
+/// # Example
+///
+/// ```rust
+/// use app_notes_rust::markdown::markdown_to_html;
+///
+/// let html = markdown_to_html("# Hello\n\nWorld");
+/// assert!(html.contains("<h1>Hello</h1>"));
+/// assert!(html.contains("<p>World</p>"));
+/// ```
+pub fn markdown_to_html(content: &str) -> String {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_SMART_PUNCTUATION);
+    options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
+
+    let parser = Parser::new_ext(content, options);
+    let mut html = String::new();
+    pulldown_cmark::html::push_html(&mut html, parser);
+
+    html
+}
+
+/// Extract plain text from markdown (removes all formatting).
+///
+/// # Arguments
+///
+/// * `content` - The markdown content.
+///
+/// # Returns
+///
+/// Returns the plain text without markdown syntax.
+///
+/// # Example
+///
+/// ```rust
+/// use app_notes_rust::markdown::extract_plain_text;
+///
+/// let text = extract_plain_text("# Title\n\n**Bold** text.");
+/// assert!(text.contains("Title"));
+/// assert!(text.contains("Bold"));
+/// assert!(!text.contains("#"));
+/// ```
+pub fn extract_plain_text(content: &str) -> String {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_TABLES);
+    options.insert(Options::ENABLE_TASKLISTS);
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    options.insert(Options::ENABLE_SMART_PUNCTUATION);
+
+    let parser = Parser::new_ext(content, options);
+    let mut text = String::new();
+
+    for event in parser {
+        match event {
+            Event::End(TagEnd::CodeBlock) => {
+                text.push('\n');
+            }
+            Event::Text(t) => {
+                text.push_str(&t);
+            }
+            Event::Code(t) => {
+                text.push_str(&t);
+            }
+            Event::End(TagEnd::Heading(_)) | Event::End(TagEnd::Paragraph) | Event::HardBreak => {
+                text.push('\n');
+            }
+            _ => {}
+        }
+    }
+
+    // Clean up multiple consecutive newlines
+    text.lines()
+        .map(|line| line.trim())
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim()
+        .to_string()
+}
+
+/// Count words and characters in text.
+///
+/// # Arguments
+///
+/// * `text` - The plain text to count.
+///
+/// # Returns
+///
+/// Returns a tuple of (word_count, char_count).
+///
+/// # Example
+///
+/// ```rust
+/// use app_notes_rust::markdown::count_words;
+///
+/// let (words, chars) = count_words("Hello world!");
+/// assert_eq!(words, 2);
+/// assert_eq!(chars, 11); // "Helloworld!"
+/// ```
+pub fn count_words(text: &str) -> (u32, u32) {
+    let trimmed = text.trim();
+
+    // Count words (split by whitespace)
+    let word_count = if trimmed.is_empty() {
+        0
+    } else {
+        trimmed.split_whitespace().count() as u32
+    };
+
+    // Count characters (excluding whitespace)
+    let char_count = trimmed.chars().filter(|c| !c.is_whitespace()).count() as u32;
+
+    (word_count, char_count)
+}
+
+/// Extract headings from markdown content.
+///
+/// # Arguments
+///
+/// * `content` - The markdown content.
+///
+/// # Returns
+///
+/// Returns a list of headings with anchors.
+///
+/// # Example
+///
+/// ```rust
+/// use app_notes_rust::markdown::extract_headings;
+///
+/// let headings = extract_headings("# Title\n\n## Section");
+/// assert_eq!(headings.len(), 2);
+/// assert_eq!(headings[0].level, 1);
+/// assert_eq!(headings[0].text, "Title");
+/// ```
+pub fn extract_headings(content: &str) -> Vec<Heading> {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_HEADING_ATTRIBUTES);
+
+    let parser = Parser::new_ext(content, options);
+    let mut headings = Vec::new();
+    let mut current_heading: Option<(u8, String)> = None;
+
+    for event in parser {
+        match event {
+            Event::Start(Tag::Heading { level, .. }) => {
+                current_heading = Some((heading_level_to_u8(&level), String::new()));
+            }
+            Event::End(TagEnd::Heading(_)) => {
+                if let Some((level, text)) = current_heading.take() {
+                    let anchor = generate_anchor(&text);
+                    headings.push(Heading {
+                        level,
+                        text,
+                        anchor,
+                    });
+                }
+            }
+            Event::Text(t) | Event::Code(t) => {
+                if let Some((_, ref mut heading_text)) = current_heading {
+                    heading_text.push_str(&t);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    headings
+}
+
+/// Generate an anchor ID from heading text.
+fn generate_anchor(text: &str) -> String {
+    text.to_lowercase()
+        .replace(|c: char| c.is_whitespace() || c == '_', "-")
+        .replace(|c: char| !c.is_alphanumeric() && c != '-', "")
+        .trim_matches('-')
+        .to_string()
+}
+
+fn heading_level_to_u8(level: &HeadingLevel) -> u8 {
+    match level {
+        HeadingLevel::H1 => 1,
+        HeadingLevel::H2 => 2,
+        HeadingLevel::H3 => 3,
+        HeadingLevel::H4 => 4,
+        HeadingLevel::H5 => 5,
+        HeadingLevel::H6 => 6,
+    }
+}
+
+// =============================================================================
+// Legacy/Extended Types and Functions
+// =============================================================================
+
 /// Represents a parsed markdown document structure.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MarkdownDocument {
@@ -25,17 +295,6 @@ pub struct MarkdownDocument {
     pub word_count: usize,
     /// Character count.
     pub char_count: usize,
-}
-
-/// Represents a markdown heading.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Heading {
-    /// Heading level (1-6).
-    pub level: u8,
-    /// Heading text.
-    pub text: String,
-    /// Heading anchor ID.
-    pub id: String,
 }
 
 /// Represents a markdown link.
@@ -70,20 +329,12 @@ pub struct Image {
 /// # Returns
 ///
 /// Returns a `MarkdownDocument` containing the parsed structure.
-pub fn parse_markdown(content: String, config: Option<MarkdownConfig>) -> MarkdownDocument {
+pub fn parse_markdown_with_config(
+    content: String,
+    config: Option<MarkdownConfig>,
+) -> MarkdownDocument {
     let config = config.unwrap_or_default();
     parse_markdown_inner(&content, &config)
-}
-
-fn heading_level_to_u8(level: &HeadingLevel) -> u8 {
-    match level {
-        HeadingLevel::H1 => 1,
-        HeadingLevel::H2 => 2,
-        HeadingLevel::H3 => 3,
-        HeadingLevel::H4 => 4,
-        HeadingLevel::H5 => 5,
-        HeadingLevel::H6 => 6,
-    }
 }
 
 fn parse_markdown_inner(content: &str, config: &MarkdownConfig) -> MarkdownDocument {
@@ -134,14 +385,11 @@ fn parse_markdown_inner(content: &str, config: &MarkdownConfig) -> MarkdownDocum
             }
             Event::End(TagEnd::Heading(_)) => {
                 if let Some((lvl, text)) = current_heading.take() {
-                    let id = text
-                        .to_lowercase()
-                        .replace(' ', "-")
-                        .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
+                    let anchor = generate_anchor(&text);
                     headings.push(Heading {
                         level: lvl,
                         text: text.clone(),
-                        id,
+                        anchor,
                     });
                 }
             }
@@ -197,8 +445,8 @@ fn parse_markdown_inner(content: &str, config: &MarkdownConfig) -> MarkdownDocum
     }
 
     // Count words and characters
-    let word_count = content.split_whitespace().count();
-    let char_count = content.chars().count();
+    let plain_text = extract_plain_text(content);
+    let (word_count, char_count) = count_words(&plain_text);
 
     debug!(
         "Parsed markdown: {} headings, {} links, {} words",
@@ -213,12 +461,12 @@ fn parse_markdown_inner(content: &str, config: &MarkdownConfig) -> MarkdownDocum
         headings,
         links,
         images,
-        word_count,
-        char_count,
+        word_count: word_count as usize,
+        char_count: char_count as usize,
     }
 }
 
-/// Convert markdown to HTML.
+/// Convert markdown to HTML (legacy version with String argument).
 ///
 /// # Arguments
 ///
@@ -227,17 +475,11 @@ fn parse_markdown_inner(content: &str, config: &MarkdownConfig) -> MarkdownDocum
 /// # Returns
 ///
 /// Returns the rendered HTML string.
-pub fn markdown_to_html(content: String) -> String {
-    let options = Options::all();
-    let parser = Parser::new_ext(&content, options);
-
-    let mut html = String::new();
-    pulldown_cmark::html::push_html(&mut html, parser);
-
-    html
+pub fn markdown_to_html_string(content: String) -> String {
+    markdown_to_html(&content)
 }
 
-/// Extract plain text from markdown (removes all formatting).
+/// Extract plain text from markdown (legacy version with String argument).
 ///
 /// # Arguments
 ///
@@ -246,18 +488,8 @@ pub fn markdown_to_html(content: String) -> String {
 /// # Returns
 ///
 /// Returns the plain text without markdown syntax.
-pub fn extract_plain_text(content: String) -> String {
-    let parser = Parser::new(&content);
-    let mut text = String::new();
-
-    for event in parser {
-        if let Event::Text(t) = event {
-            text.push_str(&t);
-            text.push(' ');
-        }
-    }
-
-    text.trim().to_string()
+pub fn extract_plain_text_string(content: String) -> String {
+    extract_plain_text(&content)
 }
 
 /// Get a table of contents from markdown content.
@@ -303,14 +535,14 @@ pub fn validate_markdown(content: String) -> Vec<String> {
 
     // Basic validation: check for unclosed code blocks
     let code_fence_count = content.matches("```").count();
-    if code_fence_count % 2 != 0 {
+    if !code_fence_count.is_multiple_of(2) {
         errors.push("Unclosed code block detected".to_string());
     }
 
     // Check for unclosed inline code
     let backtick_count = content.matches('`').count();
     // This is a simplified check; in reality, inline code needs more context
-    if backtick_count % 2 != 0 {
+    if !backtick_count.is_multiple_of(2) {
         errors.push("Possible unclosed inline code".to_string());
     }
 
@@ -332,12 +564,135 @@ pub fn render_preview(content: String, config: MarkdownConfig) -> String {
     doc.html
 }
 
+// =============================================================================
+// Tests
+// =============================================================================
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    // ===== Task R4 Tests =====
+
     #[test]
-    fn test_parse_markdown() {
+    fn test_parse_markdown_r4() {
+        let content = r#"# Title
+
+This is a paragraph with **bold** and *italic* text.
+
+## Section 1
+
+[Link](https://example.com)
+
+![Alt text](image.png)
+
+- Task 1
+- Task 2
+"#;
+
+        let result = parse_markdown(content);
+
+        // Check HTML generation
+        assert!(result.html.contains("<h1>"));
+        assert!(result.html.contains("</h1>"));
+        assert!(result.html.contains("Title"));
+        assert!(result.html.contains("<strong>bold</strong>"));
+        assert!(result.html.contains("<em>italic</em>"));
+
+        // Check headings extraction
+        assert_eq!(result.headings.len(), 2);
+        assert_eq!(result.headings[0].text, "Title");
+        assert_eq!(result.headings[0].level, 1);
+        assert_eq!(result.headings[0].anchor, "title");
+        assert_eq!(result.headings[1].text, "Section 1");
+        assert_eq!(result.headings[1].level, 2);
+        assert_eq!(result.headings[1].anchor, "section-1");
+
+        // Check word count
+        assert!(result.word_count > 0);
+        assert!(result.char_count > 0);
+    }
+
+    #[test]
+    fn test_markdown_to_html_r4() {
+        let html = markdown_to_html("# Hello\n\nWorld");
+        assert!(html.contains("<h1>Hello</h1>"));
+        assert!(html.contains("<p>World</p>"));
+    }
+
+    #[test]
+    fn test_gfm_features() {
+        // Test tables
+        let table_md = "| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |";
+        let html = markdown_to_html(table_md);
+        assert!(html.contains("<table>"));
+        assert!(html.contains("<th>"));
+        assert!(html.contains("<td>"));
+
+        // Test strikethrough
+        let strike_md = "~~deleted~~";
+        let html = markdown_to_html(strike_md);
+        assert!(html.contains("<del>deleted</del>"));
+
+        // Test task lists
+        let task_md = "- [x] Done\n- [ ] Todo";
+        let html = markdown_to_html(task_md);
+        assert!(html.contains("<input"));
+    }
+
+    #[test]
+    fn test_extract_plain_text_r4() {
+        let content = "# Title\n\n**Bold** and *italic* text.\n\n```code```\n\nMore text.";
+        let text = extract_plain_text(content);
+        assert!(text.contains("Title"));
+        assert!(text.contains("Bold"));
+        assert!(text.contains("italic"));
+        assert!(!text.contains("#"));
+        assert!(!text.contains("**"));
+        assert!(!text.contains("*"));
+    }
+
+    #[test]
+    fn test_count_words() {
+        let (words, chars) = count_words("Hello world!");
+        assert_eq!(words, 2);
+        assert_eq!(chars, 11); // "Helloworld!"
+
+        let (words, chars) = count_words("  Multiple   spaces   here  ");
+        assert_eq!(words, 3);
+        assert_eq!(chars, 18); // "Multiple" (8) + "spaces" (6) + "here" (4) = 18
+
+        let (words, chars) = count_words("");
+        assert_eq!(words, 0);
+        assert_eq!(chars, 0);
+    }
+
+    #[test]
+    fn test_extract_headings() {
+        let content = "# H1\n\nSome text\n\n## H2\n\n### H3\n\n#### H4\n\n##### H5\n\n###### H6";
+        let headings = extract_headings(content);
+        assert_eq!(headings.len(), 6);
+        assert_eq!(headings[0].level, 1);
+        assert_eq!(headings[1].level, 2);
+        assert_eq!(headings[2].level, 3);
+        assert_eq!(headings[3].level, 4);
+        assert_eq!(headings[4].level, 5);
+        assert_eq!(headings[5].level, 6);
+    }
+
+    #[test]
+    fn test_generate_anchor() {
+        assert_eq!(generate_anchor("Hello World"), "hello-world");
+        assert_eq!(generate_anchor("Test_Heading"), "test-heading");
+        assert_eq!(generate_anchor("Special!@#Chars"), "specialchars");
+        assert_eq!(generate_anchor("  Spaces  "), "spaces");
+        assert_eq!(generate_anchor("Multi--Dash"), "multi--dash");
+    }
+
+    // ===== Legacy Tests =====
+
+    #[test]
+    fn test_parse_markdown_with_config() {
         let content = r#"# Title
 
 This is a paragraph.
@@ -350,7 +705,7 @@ This is a paragraph.
 "#
         .to_string();
 
-        let doc = parse_markdown(content, None);
+        let doc = parse_markdown_with_config(content, None);
 
         assert_eq!(doc.headings.len(), 2);
         assert_eq!(doc.headings[0].text, "Title");
@@ -366,27 +721,6 @@ This is a paragraph.
         assert_eq!(doc.images[0].src, "image.png");
 
         assert!(doc.word_count > 0);
-    }
-
-    #[test]
-    fn test_markdown_to_html() {
-        let content = "# Hello\n\nWorld".to_string();
-        let html = markdown_to_html(content);
-        assert!(html.contains("<h1>"));
-        assert!(html.contains("Hello"));
-        assert!(html.contains("<p>"));
-        assert!(html.contains("World"));
-    }
-
-    #[test]
-    fn test_extract_plain_text() {
-        let content = "# Title\n\n**Bold** and *italic* text.".to_string();
-        let text = extract_plain_text(content);
-        assert!(text.contains("Title"));
-        assert!(text.contains("Bold"));
-        assert!(text.contains("italic"));
-        assert!(!text.contains("#"));
-        assert!(!text.contains("**"));
     }
 
     #[test]
@@ -415,21 +749,21 @@ This is a paragraph.
     }
 
     #[test]
-    fn test_gfm_options() {
-        let content = "| a | b |\n|---|---|\n| 1 | 2 |".to_string();
-        let mut config = MarkdownConfig::default();
-        config.tables = true;
+    fn test_heading_anchor_generation() {
+        let content = "# Hello World!\n\n## Test-Heading".to_string();
+        let doc = parse_markdown_with_config(content, None);
 
-        let doc = parse_markdown_inner(&content, &config);
-        assert!(doc.html.contains("<table>"));
+        assert_eq!(doc.headings[0].anchor, "hello-world");
+        assert_eq!(doc.headings[1].anchor, "test-heading");
     }
 
     #[test]
-    fn test_heading_id_generation() {
-        let content = "# Hello World!\n\n## Test-Heading".to_string();
-        let doc = parse_markdown(content, None);
-
-        assert_eq!(doc.headings[0].id, "hello-world");
-        assert_eq!(doc.headings[1].id, "test-heading");
+    fn test_code_block_with_language() {
+        let content = "```rust\nfn main() {}\n```".to_string();
+        let html = markdown_to_html(&content);
+        assert!(html.contains("<pre>"));
+        assert!(html.contains("<code"));
+        // Note: pulldown_cmark generates class attribute differently
+        assert!(html.contains("language-rust") || html.contains("rust"));
     }
 }

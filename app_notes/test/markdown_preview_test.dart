@@ -20,7 +20,7 @@ void main() {
             editorStateProvider.overrideWith(() => _MockEditorState()),
           ],
           child: const MaterialApp(
-            home: MarkdownPreview(filePath: testFilePath),
+            home: Scaffold(body: MarkdownPreview(filePath: testFilePath)),
           ),
         ),
       );
@@ -38,7 +38,9 @@ void main() {
             editorStateProvider.overrideWith(() => _EmptyEditorState()),
           ],
           child: const MaterialApp(
-            home: MarkdownPreview(filePath: '/nonexistent/file.md'),
+            home: Scaffold(
+              body: MarkdownPreview(filePath: '/nonexistent/file.md'),
+            ),
           ),
         ),
       );
@@ -57,7 +59,7 @@ void main() {
             ),
           ],
           child: const MaterialApp(
-            home: MarkdownPreview(filePath: '/test/file.md'),
+            home: Scaffold(body: MarkdownPreview(filePath: '/test/file.md')),
           ),
         ),
       );
@@ -78,7 +80,7 @@ void main() {
             ),
           ],
           child: const MaterialApp(
-            home: MarkdownPreview(filePath: '/test/file.md'),
+            home: Scaffold(body: MarkdownPreview(filePath: '/test/file.md')),
           ),
         ),
       );
@@ -97,7 +99,7 @@ void main() {
             ),
           ],
           child: const MaterialApp(
-            home: MarkdownPreview(filePath: '/test/file.md'),
+            home: Scaffold(body: MarkdownPreview(filePath: '/test/file.md')),
           ),
         ),
       );
@@ -105,6 +107,104 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(Markdown), findsOneWidget);
+    });
+
+    testWidgets('renders blockquotes', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            editorStateProvider.overrideWith(
+              () => _CustomContentState('> This is a quote'),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: MarkdownPreview(filePath: '/test/file.md')),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Markdown), findsOneWidget);
+      expect(find.textContaining('This is a quote'), findsOneWidget);
+    });
+
+    testWidgets('renders tables', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            editorStateProvider.overrideWith(
+              () => _CustomContentState('| A | B |\n|---|---|\n| 1 | 2 |'),
+            ),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: MarkdownPreview(filePath: '/test/file.md')),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Markdown), findsOneWidget);
+    });
+
+    testWidgets('supports text selection', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            editorStateProvider.overrideWith(() => _MockEditorState()),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: MarkdownPreview(filePath: '/test/file.md')),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final markdown = tester.widget<Markdown>(find.byType(Markdown));
+      expect(markdown.selectable, isTrue);
+    });
+
+    testWidgets('applies custom style sheet', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            editorStateProvider.overrideWith(() => _MockEditorState()),
+          ],
+          child: MaterialApp(
+            theme: ThemeData.light(),
+            home: const Scaffold(
+              body: MarkdownPreview(filePath: '/test/file.md'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final markdown = tester.widget<Markdown>(find.byType(Markdown));
+      expect(markdown.styleSheet, isNotNull);
+    });
+
+    testWidgets('handles dark theme', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            editorStateProvider.overrideWith(() => _MockEditorState()),
+          ],
+          child: MaterialApp(
+            theme: ThemeData.dark(),
+            home: const Scaffold(
+              body: MarkdownPreview(filePath: '/test/file.md'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MarkdownPreview), findsOneWidget);
     });
   });
 }
