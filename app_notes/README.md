@@ -1,8 +1,15 @@
-# Markdown 笔记应用 - 项目文档
+# AppNotes - Markdown Editor
+
+一个现代化的桌面 Markdown 编辑器，支持 Windows、macOS 和 Linux。
+
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+
+---
 
 ## 项目概述
 
-一个本地优先的跨平台 Markdown 笔记桌面应用，使用 Rust + Flutter 技术栈构建。
+AppNotes 是一个本地优先的跨平台 Markdown 笔记桌面应用，使用 Rust + Flutter 技术栈构建。
 
 **核心特性**:
 - 📝 本地 Markdown 文件编辑
@@ -18,6 +25,303 @@
 
 ---
 
+## 功能特性
+
+- 📝 **实时预览**: 编辑 Markdown 时即时预览渲染效果
+- 📁 **文件夹工作区**: 打开整个文件夹作为工作区，方便管理文档
+- 🎨 **主题切换**: 支持亮色和暗色主题
+- 💾 **自动保存**: 自动保存您的更改，无需担心丢失内容
+- 🔍 **文件树浏览**: 直观的文件树界面，支持展开/折叠
+- ⌨️ **快捷键支持**: 丰富的键盘快捷键提高编辑效率
+- 🖥️ **跨平台**: 支持 Windows、macOS 和 Linux
+
+---
+
+## 系统要求
+
+### Windows
+- Windows 10 或更高版本
+- 64 位处理器
+
+### macOS
+- macOS 10.14 或更高版本
+- Intel 或 Apple Silicon 处理器
+
+### Linux
+- Ubuntu 20.04 或兼容发行版
+- 64 位处理器
+- GTK 3.0 或更高版本
+
+---
+
+## 安装说明
+
+### Windows
+
+#### 方法一：使用安装程序（推荐）
+1. 下载 `appnotes-1.0.0-setup.exe`
+2. 运行安装程序并按照提示完成安装
+3. 从开始菜单或桌面快捷方式启动 AppNotes
+
+#### 方法二：便携版
+1. 下载 `appnotes-1.0.0-windows.zip`
+2. 解压到任意目录
+3. 运行 `app_notes.exe`
+
+#### 方法三：Microsoft Store
+通过 Microsoft Store 安装（即将推出）
+
+### macOS
+
+#### 方法一：DMG 安装（推荐）
+1. 下载 `appnotes-1.0.0.dmg`
+2. 双击打开 DMG 文件
+3. 将 AppNotes 拖到 Applications 文件夹
+4. 从 Applications 启动 AppNotes
+
+#### 方法二：Homebrew
+```bash
+brew install --cask appnotes
+```
+
+### Linux
+
+#### 方法一：DEB 包（Ubuntu/Debian）
+```bash
+sudo dpkg -i appnotes-1.0.0.deb
+sudo apt-get install -f  # 安装依赖
+```
+
+#### 方法二：Tarball
+```bash
+tar -xzf appnotes-1.0.0-linux-x64.tar.gz
+cd appnotes
+./app_notes
+```
+
+#### 方法三：AppImage（即将推出）
+```bash
+chmod +x appnotes-1.0.0.AppImage
+./appnotes-1.0.0.AppImage
+```
+
+---
+
+## 使用指南
+
+### 快速开始
+
+1. **打开文件夹**: 点击侧边栏的 "Open Folder" 按钮或按 `Ctrl+O` 选择一个文件夹作为工作区
+2. **创建文件**: 点击 "New File" 按钮或右键点击文件夹选择 "New File"
+3. **编辑文档**: 点击文件在编辑器中打开，开始编写 Markdown
+4. **预览效果**: 右侧实时预览区域会显示渲染后的效果
+5. **保存文件**: 按 `Ctrl+S` 保存当前文件
+
+### 界面说明
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  AppNotes - Markdown Editor                    ─ □ ✕   │
+├────────┬────────────────────────────────────────────────┤
+│        │  file1.md  file2.md  ●file3.md          ×      │
+│  📁    ├────────────────────────────────────────────────┤
+│  docs  │                                                │
+│   ├─a.md│  # Hello World                               │
+│   └─b.md│                                              │
+│  note.md│  This is a **markdown** document.            │
+│        │                                                │
+│        │  - Item 1                                    │
+│        │  - Item 2                                    │
+│        │                                                │
+├────────┤────────────────────────────────────────────────┤
+│ 🔍     │  # Hello World                                 │
+├────────┤                                                │
+│        │  This is a **markdown** document.              │
+│        │                                                │
+│        │  • Item 1                                      │
+│        │  • Item 2                                      │
+│        │                                                │
+└────────┴────────────────────────────────────────────────┘
+/workspace/docs/note.md                    UTF-8   LF   Saved
+Ln 5, Col 12                    156 chars | 25 words
+```
+
+### Markdown 支持
+
+AppNotes 支持标准的 Markdown 语法：
+
+- 标题 (`# H1`, `## H2`, 等)
+- 粗体和斜体 (`**bold**`, `*italic*`)
+- 列表 (有序和无序)
+- 链接和图片 (`[text](url)`, `![alt](image)`)
+- 代码块 (行内和块级)
+- 表格
+- 引用块
+- 任务列表
+
+---
+
+## 快捷键列表
+
+### 文件操作
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl + O` | 打开文件夹 |
+| `Ctrl + N` | 新建文件 |
+| `Ctrl + S` | 保存当前文件 |
+| `Ctrl + Shift + S` | 另存为 |
+| `Ctrl + W` | 关闭当前文件 |
+| `Ctrl + Shift + W` | 关闭所有文件 |
+| `Ctrl + Q` | 退出应用 |
+
+### 编辑操作
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl + Z` | 撤销 |
+| `Ctrl + Shift + Z` | 重做 |
+| `Ctrl + X` | 剪切 |
+| `Ctrl + C` | 复制 |
+| `Ctrl + V` | 粘贴 |
+| `Ctrl + A` | 全选 |
+| `Ctrl + F` | 查找 |
+| `Ctrl + H` | 替换 |
+
+### 视图操作
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl + =` / `Ctrl + +` | 放大字体 |
+| `Ctrl + -` | 缩小字体 |
+| `Ctrl + 0` | 重置字体大小 |
+| `Ctrl + B` | 切换侧边栏 |
+| `Ctrl + P` | 切换预览 |
+| `F11` | 全屏模式 |
+
+### 窗口导航
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl + Tab` | 切换到下一个文件 |
+| `Ctrl + Shift + Tab` | 切换到上一个文件 |
+| `Ctrl + 1-9` | 切换到第 N 个文件 |
+
+---
+
+## 开发构建
+
+### 环境要求
+
+- Flutter SDK 3.11.0 或更高版本
+- Dart SDK 3.0 或更高版本
+- Rust toolchain (用于 FFI 功能)
+
+### 构建步骤
+
+1. **克隆仓库**
+```bash
+git clone https://github.com/yourusername/appnotes.git
+cd appnotes
+```
+
+2. **获取依赖**
+```bash
+flutter pub get
+```
+
+3. **生成代码**
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+4. **运行应用**
+```bash
+flutter run
+```
+
+5. **构建发布版本**
+
+**Windows:**
+```bash
+flutter build windows --release
+```
+
+**macOS:**
+```bash
+flutter build macos --release
+```
+
+**Linux:**
+```bash
+flutter build linux --release
+```
+
+### 运行测试
+
+```bash
+# 运行所有测试
+./scripts/test.sh
+
+# 或直接使用 flutter
+flutter test
+
+# 生成覆盖率报告
+./scripts/test.sh --coverage
+```
+
+### 使用构建脚本
+
+```bash
+# 构建当前平台
+./scripts/build.sh
+
+# 构建特定平台
+./scripts/build.sh --platform windows
+./scripts/build.sh --platform macos
+./scripts/build.sh --platform linux
+
+# 创建安装包
+./scripts/package.sh --platform all --version 1.0.0
+```
+
+---
+
+## 项目结构
+
+```
+app_notes/
+├── lib/                    # Dart 源代码
+│   ├── main.dart          # 应用入口
+│   ├── app.dart           # 应用配置
+│   ├── models/            # 数据模型
+│   ├── state/             # 状态管理 (Riverpod)
+│   ├── services/          # 服务层
+│   └── ui/                # UI 组件
+│       ├── layout/        # 布局组件
+│       └── widgets/       # 可复用组件
+├── test/                  # 测试文件
+│   ├── models_test.dart
+│   ├── state_test.dart
+│   ├── services/
+│   │   ├── file_service_test.dart
+│   │   └── rust_service_test.dart
+│   └── ui/
+│       ├── file_tree_view_test.dart
+│       ├── sidebar_test.dart
+│       └── status_bar_test.dart
+├── windows/               # Windows 平台配置
+├── macos/                 # macOS 平台配置
+├── linux/                 # Linux 平台配置
+├── scripts/               # 构建脚本
+│   ├── build.sh
+│   ├── package.sh
+│   └── test.sh
+└── assets/                # 静态资源
+```
+
+---
+
 ## 文档导航
 
 | 文档 | 说明 | 目标读者 |
@@ -27,136 +331,6 @@
 | [TASKS.md](./TASKS.md) | 任务分解列表 | 项目经理、开发者 |
 | [QUICK_START.md](./QUICK_START.md) | 快速开始指南 | 新加入开发者 |
 | [ROADMAP.md](./ROADMAP.md) | 开发路线图 | 项目经理、所有成员 |
-
----
-
-## 快速开始
-
-### 1. 阅读 PRD
-了解产品需求和用户故事
-
-```bash
-cat PRD.md
-```
-
-### 2. 理解架构
-查看系统架构和模块设计
-
-```bash
-cat ARCHITECTURE.md
-```
-
-### 3. 查看任务
-了解当前 Sprint 的任务分配
-
-```bash
-cat TASKS.md
-```
-
-### 4. 开始开发
-根据角色查看对应的开发指南
-
-```bash
-# Rust 开发者
-cat QUICK_START.md | grep -A 20 "Rust 开发者"
-
-# Flutter 开发者  
-cat QUICK_START.md | grep -A 20 "Flutter 开发者"
-```
-
----
-
-## 项目结构
-
-```
-app_notes/
-├── PRD.md              # 产品需求文档
-├── ARCHITECTURE.md     # 架构设计
-├── TASKS.md           # 任务分解
-├── QUICK_START.md     # 快速开始
-├── ROADMAP.md         # 开发路线图
-├── README.md          # 本文件
-└── src/               # 源代码（开发中创建）
-    ├── rust/          # Rust 后端
-    └── flutter/       # Flutter 前端
-```
-
----
-
-## 开发阶段
-
-### 📍 Phase 1: 基础架构 (Week 1-2)
-- Rust 项目初始化
-- Flutter 项目初始化
-- FFI 集成
-- 单文件编辑功能
-
-**里程碑**: 可以打开、编辑、保存单个 Markdown 文件
-
-### 📍 Phase 2: 工作区与预览 (Week 3-4)
-- 文件夹工作区
-- 文件树导航
-- 实时预览
-- 多标签页
-
-**里程碑**: 完整的文件管理和预览功能
-
-### 📍 Phase 3: 文件操作 (Week 5-6)
-- 新建/删除/重命名文件
-- 自动保存
-- 右键菜单
-- 状态栏
-
-**里程碑**: 完善的文件操作和用户体验
-
-### 📍 Phase 4: 完善与发布 (Week 7-8)
-- 主题系统
-- 键盘快捷键
-- 跨平台测试
-- 打包发布
-
-**里程碑**: 三平台可用，可安装使用
-
----
-
-## 角色分工
-
-| 角色 | 职责 | 主要任务 |
-|------|------|----------|
-| **rust_dev** | Rust 后端开发 | 文件系统、Markdown解析、文件监控 |
-| **flutter_dev** | Flutter 逻辑开发 | 状态管理、服务层、业务逻辑 |
-| **ui_dev** | Flutter UI 开发 | 界面组件、交互设计、用户体验 |
-
----
-
-## 关键技术决策
-
-1. **Rust 处理文件系统**: 性能更好，跨平台路径处理统一
-2. **Riverpod 状态管理**: 编译时安全，适合大型应用
-3. **本地优先架构**: 隐私保护，无网络依赖
-4. **分屏布局**: 类似 Typora/Obsidian 的用户体验
-
-详细决策记录请查看 ARCHITECTURE.md 的 Decision Log 部分。
-
----
-
-## 开发规范
-
-### Git 工作流
-- 主分支: `main`
-- 功能分支: `feature/T{任务ID}-{描述}`
-- 提交信息: `{类型}: {描述} (T{任务ID})`
-
-示例:
-```bash
-git checkout -b feature/R3-file-system
-git commit -m "feat: implement read_file and write_file (R3)"
-```
-
-### 代码规范
-- Rust: 遵循 `cargo clippy` 建议
-- Flutter: 遵循 `flutter_lints` 规则
-- 所有代码必须通过 PR 审查
 
 ---
 
@@ -191,6 +365,32 @@ git commit -m "feat: implement read_file and write_file (R3)"
 
 ---
 
+## 开发规范
+
+### Git 工作流
+- 主分支: `main`
+- 功能分支: `feature/T{任务ID}-{描述}`
+- 提交信息: `{类型}: {描述} (T{任务ID})`
+
+示例:
+```bash
+git checkout -b feature/R3-file-system
+git commit -m "feat: implement read_file and write_file (R3)"
+```
+
+### 代码规范
+- Rust: 遵循 `cargo clippy` 建议
+- Flutter: 遵循 `flutter_lints` 规则
+- 所有代码必须通过 PR 审查
+
+---
+
+## 许可证
+
+本项目基于 MIT 许可证开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+---
+
 ## 支持
 
 如有问题，请参考:
@@ -200,6 +400,8 @@ git commit -m "feat: implement read_file and write_file (R3)"
 
 ---
 
-**项目状态**: 准备开发  
-**文档版本**: 1.0  
-**最后更新**: 2024-01-15
+**项目状态**: 开发中  
+**文档版本**: 1.1  
+**最后更新**: 2024-02-19
+
+**享受写作！** ✨

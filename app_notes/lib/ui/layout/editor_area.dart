@@ -2,10 +2,13 @@
 library;
 
 import 'package:app_notes/models/open_file.dart';
+import 'package:app_notes/services/settings_service.dart';
 import 'package:app_notes/state/app_state.dart';
 import 'package:app_notes/state/editor_state.dart';
 import 'package:app_notes/state/preview_state.dart';
+import 'package:app_notes/state/search_state.dart';
 import 'package:app_notes/ui/layout/status_bar.dart';
+import 'package:app_notes/ui/widgets/find_box.dart';
 import 'package:app_notes/ui/widgets/markdown_editor.dart';
 import 'package:app_notes/ui/widgets/markdown_preview.dart';
 import 'package:flutter/material.dart';
@@ -57,6 +60,14 @@ class _EditorAreaState extends ConsumerState<EditorArea> {
             const _SaveFileIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.backslash):
             const _TogglePreviewIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyF):
+            const _OpenFindIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.equal):
+            const _ZoomInIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.minus):
+            const _ZoomOutIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.digit0):
+            const _ZoomResetIntent(),
       },
       child: Actions(
         actions: {
@@ -74,6 +85,18 @@ class _EditorAreaState extends ConsumerState<EditorArea> {
           ),
           _TogglePreviewIntent: CallbackAction<_TogglePreviewIntent>(
             onInvoke: (_) => _togglePreview(ref),
+          ),
+          _OpenFindIntent: CallbackAction<_OpenFindIntent>(
+            onInvoke: (_) => _openFind(ref),
+          ),
+          _ZoomInIntent: CallbackAction<_ZoomInIntent>(
+            onInvoke: (_) => _zoomIn(ref),
+          ),
+          _ZoomOutIntent: CallbackAction<_ZoomOutIntent>(
+            onInvoke: (_) => _zoomOut(ref),
+          ),
+          _ZoomResetIntent: CallbackAction<_ZoomResetIntent>(
+            onInvoke: (_) => _zoomReset(ref),
           ),
         },
         child: Focus(
@@ -135,6 +158,22 @@ class _EditorAreaState extends ConsumerState<EditorArea> {
     ref.read(previewStateProvider.notifier).setVisible(newState);
     // Save to settings
     ref.read(appStateProvider.notifier).setShowPreview(newState);
+  }
+
+  void _openFind(WidgetRef ref) {
+    ref.read(searchControllerProvider.notifier).toggleVisibility();
+  }
+
+  void _zoomIn(WidgetRef ref) {
+    ref.read(appStateProvider.notifier).zoomInFontSize();
+  }
+
+  void _zoomOut(WidgetRef ref) {
+    ref.read(appStateProvider.notifier).zoomOutFontSize();
+  }
+
+  void _zoomReset(WidgetRef ref) {
+    ref.read(appStateProvider.notifier).resetFontSize();
   }
 
   Future<void> _saveCurrentFile(WidgetRef ref, BuildContext context) async {
@@ -354,7 +393,7 @@ class _EditorAreaState extends ConsumerState<EditorArea> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Use Ctrl+\\ to toggle preview panel',
+            'Ctrl+\\: Toggle Preview  |  Ctrl+F: Find  |  Ctrl++/Ctrl+-: Zoom',
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurface.withAlpha(76),
             ),
@@ -365,23 +404,80 @@ class _EditorAreaState extends ConsumerState<EditorArea> {
   }
 }
 
-/// Split view with editor and preview side by side.
-class _SplitView extends StatelessWidget {
+/// Split view with editor and preview side by side with draggable divider.
+class _SplitView extends ConsumerStatefulWidget {
   const _SplitView({super.key, required this.filePath});
 
   final String filePath;
 
   @override
+  ConsumerState<_SplitView> createState() => _SplitViewState();
+}
+
+class _SplitViewState extends ConsumerState<_SplitView> {
+  bool _isDragging = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Editor - takes half the space
-        Expanded(child: MarkdownEditor(filePath: filePath)),
-        // Vertical divider
-        const VerticalDivider(width: 1),
-        // Preview - takes half the space
-        Expanded(child: MarkdownPreview(filePath: filePath)),
-      ],
+    final theme = Theme.of(context);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final ratio = ref.watch(editorPreviewRatioProvider);
+
+        // Use percentage-based sizing instead of flex to avoid unbounded constraints
+        final editorWidth = constraints.maxWidth * ratio;
+        final previewWidth = constraints.maxWidth * (1 - ratio);
+
+        return Row(
+          children: [
+            // Editor
+            SizedBox(
+              width: editorWidth > 0 ? editorWidth : 0,
+              child: EditorWithFind(
+                child: MarkdownEditor(filePath: widget.filePath),
+              ),
+            ),
+            // Draggable divider
+            MouseRegion(
+              cursor: SystemMouseCursors.resizeColumn,
+              onEnter: (_) => setState(() => _isDragging = true),
+              onExit: (_) => setState(() => _isDragging = false),
+              child: GestureDetector(
+                onHorizontalDragUpdate: (details) {
+                  final width = constraints.maxWidth;
+                  if (width > 0) {
+                    final delta = details.delta.dx / width;
+                    final newRatio = ratio + delta;
+                    ref
+                        .read(editorPreviewRatioProvider.notifier)
+                        .setRatio(newRatio);
+                  }
+                },
+                child: Container(
+                  width: 8,
+                  color: _isDragging
+                      ? theme.colorScheme.primary.withAlpha(128)
+                      : Colors.transparent,
+                  child: Center(
+                    child: Container(
+                      width: 2,
+                      color: _isDragging
+                          ? theme.colorScheme.primary
+                          : theme.dividerColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Preview
+            SizedBox(
+              width: previewWidth > 0 ? previewWidth : 0,
+              child: MarkdownPreview(filePath: widget.filePath),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -394,7 +490,7 @@ class _EditorOnlyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MarkdownEditor(filePath: filePath);
+    return EditorWithFind(child: MarkdownEditor(filePath: filePath));
   }
 }
 
@@ -657,4 +753,20 @@ class _TogglePreviewIntent extends Intent {
 
 class _SaveFileIntent extends Intent {
   const _SaveFileIntent();
+}
+
+class _OpenFindIntent extends Intent {
+  const _OpenFindIntent();
+}
+
+class _ZoomInIntent extends Intent {
+  const _ZoomInIntent();
+}
+
+class _ZoomOutIntent extends Intent {
+  const _ZoomOutIntent();
+}
+
+class _ZoomResetIntent extends Intent {
+  const _ZoomResetIntent();
 }

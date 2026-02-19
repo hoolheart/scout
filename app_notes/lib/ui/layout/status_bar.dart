@@ -2,6 +2,7 @@
 library;
 
 import 'package:app_notes/models/open_file.dart';
+import 'package:app_notes/state/app_state.dart';
 import 'package:app_notes/state/editor_state.dart';
 import 'package:app_notes/state/save_status.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +49,8 @@ class StatusBar extends ConsumerWidget {
             _StatusItem(icon: Icons.code, label: 'UTF-8'),
             const SizedBox(width: 12),
             _StatusItem(label: 'LF'),
+            const SizedBox(width: 16),
+            _FontSizeIndicator(),
             const SizedBox(width: 16),
             _CursorPositionIndicator(file: activeFile),
             const SizedBox(width: 16),
@@ -246,6 +249,18 @@ class _CharacterCountIndicator extends StatelessWidget {
     if (text.isEmpty) return 0;
     // Count words by splitting on whitespace
     return text.trim().split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length;
+  }
+}
+
+/// Font size indicator showing current editor font size.
+class _FontSizeIndicator extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fontSize = ref.watch(
+      appStateProvider.select((s) => s.editorFontSize),
+    );
+
+    return _StatusItem(icon: Icons.format_size, label: '${fontSize.toInt()}px');
   }
 }
 

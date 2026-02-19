@@ -3,7 +3,6 @@ library;
 
 import 'package:app_notes/ui/layout/editor_area.dart';
 import 'package:app_notes/ui/layout/sidebar.dart';
-import 'package:app_notes/ui/layout/status_bar.dart';
 import 'package:app_notes/ui/layout/window_title_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,14 +27,7 @@ class MainLayout extends ConsumerWidget {
               children: [
                 if (isSidebarVisible) const Sidebar(),
                 const VerticalDivider(width: 1),
-                const Expanded(
-                  child: Column(
-                    children: [
-                      Expanded(child: EditorArea()),
-                      StatusBar(),
-                    ],
-                  ),
-                ),
+                const Expanded(child: EditorArea()),
               ],
             ),
           ),

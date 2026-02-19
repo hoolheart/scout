@@ -44,13 +44,19 @@ class AppSettings with _$AppSettings {
   const AppSettings._();
 
   /// Minimum allowed font size.
-  static const double minFontSize = 8.0;
+  static const double minFontSize = 10.0;
 
   /// Maximum allowed font size.
-  static const double maxFontSize = 32.0;
+  static const double maxFontSize = 24.0;
+
+  /// Default font size.
+  static const double defaultFontSize = 16.0;
+
+  /// Font size step for zoom in/out.
+  static const double fontSizeStep = 2.0;
 
   /// Minimum allowed sidebar width.
-  static const double minSidebarWidth = 150.0;
+  static const double minSidebarWidth = 200.0;
 
   /// Maximum allowed sidebar width.
   static const double maxSidebarWidth = 500.0;

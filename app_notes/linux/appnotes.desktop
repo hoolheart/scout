@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=AppNotes
+Comment=A modern Markdown editor for desktop
+Exec=/usr/share/appnotes/app_notes
+Icon=/usr/share/icons/hicolor/256x256/apps/appnotes.png
+Type=Application
+Categories=Office;TextEditor;Development;
+Keywords=markdown;editor;notes;writing;
+Terminal=false
+StartupNotify=true
+MimeType=text/markdown;text/plain;
