@@ -4,7 +4,6 @@ library;
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'cursor_position.freezed.dart';
-part 'cursor_position.g.dart';
 
 /// Represents a cursor position in the text editor.
 @freezed
@@ -17,10 +16,6 @@ class CursorPosition with _$CursorPosition {
     /// Column number (0-indexed).
     @Default(0) int column,
   }) = _CursorPosition;
-
-  /// Creates a CursorPosition from JSON.
-  factory CursorPosition.fromJson(Map<String, dynamic> json) =>
-      _$CursorPositionFromJson(json);
 
   const CursorPosition._();
 

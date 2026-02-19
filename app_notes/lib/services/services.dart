@@ -4,4 +4,4 @@ library;
 export 'file_picker_service.dart';
 export 'file_service.dart';
 export 'rust_service.dart';
-export 'rust_service_provider.dart';
+export 'settings_service.dart';

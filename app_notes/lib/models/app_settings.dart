@@ -8,7 +8,7 @@ part 'app_settings.freezed.dart';
 part 'app_settings.g.dart';
 
 /// Represents application-wide settings and preferences.
-@freezed
+@Freezed(toJson: true, fromJson: true)
 class AppSettings with _$AppSettings {
   /// Creates new app settings.
   const factory AppSettings({
@@ -36,10 +36,6 @@ class AppSettings with _$AppSettings {
     /// Width of the sidebar in pixels.
     @Default(250.0) double sidebarWidth,
   }) = _AppSettings;
-
-  /// Creates AppSettings from JSON.
-  factory AppSettings.fromJson(Map<String, dynamic> json) =>
-      _$AppSettingsFromJson(json);
 
   const AppSettings._();
 
@@ -70,34 +66,4 @@ class AppSettings with _$AppSettings {
   /// Returns clamped sidebar width within valid range.
   double get clampedSidebarWidth =>
       sidebarWidth.clamp(minSidebarWidth, maxSidebarWidth);
-}
-
-/// Custom JSON converter for ThemeMode.
-class ThemeModeConverter implements JsonConverter<ThemeMode, String> {
-  /// Creates a new theme mode converter.
-  const ThemeModeConverter();
-
-  @override
-  ThemeMode fromJson(String json) {
-    switch (json) {
-      case 'light':
-        return ThemeMode.light;
-      case 'dark':
-        return ThemeMode.dark;
-      default:
-        return ThemeMode.system;
-    }
-  }
-
-  @override
-  String toJson(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'light';
-      case ThemeMode.dark:
-        return 'dark';
-      case ThemeMode.system:
-        return 'system';
-    }
-  }
 }

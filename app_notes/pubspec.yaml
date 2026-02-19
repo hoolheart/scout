@@ -13,19 +13,19 @@ dependencies:
 
   # Core dependencies
   flutter_rust_bridge: ^2.0.0
-  flutter_riverpod: ^2.4.0
-  riverpod_annotation: ^2.2.0
-  file_picker: ^6.0.0
+  flutter_riverpod: ^2.5.0
+  riverpod_annotation: ^2.5.0
+  file_picker: ^10.3.10
   flutter_code_editor: ^0.3.0
-  flutter_markdown: ^0.6.18
-  window_manager: ^0.3.0
+  flutter_markdown: ^0.7.7+1
+  window_manager: ^0.5.1
   url_launcher: ^6.2.0
   
   # Utilities
   path: ^1.8.3
   path_provider: ^2.1.0
   freezed_annotation: ^2.4.0
-  json_annotation: ^4.8.1
+  json_annotation: ^4.9.0
 
   # Settings persistence
   shared_preferences: ^2.2.2
@@ -37,13 +37,13 @@ dev_dependencies:
     sdk: flutter
 
   # Code generation
-  riverpod_generator: ^2.3.0
+  riverpod_generator: ^2.5.0
   build_runner: ^2.4.0
-  freezed: ^2.4.0
-  json_serializable: ^6.7.0
+  freezed: ^2.5.0
+  json_serializable: ^6.8.0
   
   # Linting
-  very_good_analysis: ^6.0.0
+  very_good_analysis: ^10.2.0
 
   # Packaging
   msix: ^3.16.0

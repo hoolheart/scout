@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'search_state.g.dart';
@@ -206,30 +207,30 @@ class SearchState {
 
 /// Provider for checking if find box is visible.
 @riverpod
-bool isFindBoxVisible(IsFindBoxVisibleRef ref) {
+bool isFindBoxVisible(Ref ref) {
   return ref.watch(searchControllerProvider.select((s) => s.isVisible));
 }
 
 /// Provider for current search query.
 @riverpod
-String searchQuery(SearchQueryRef ref) {
+String searchQuery(Ref ref) {
   return ref.watch(searchControllerProvider.select((s) => s.query));
 }
 
 /// Provider for search matches.
 @riverpod
-List<SearchMatch> searchMatches(SearchMatchesRef ref) {
+List<SearchMatch> searchMatches(Ref ref) {
   return ref.watch(searchControllerProvider.select((s) => s.matches));
 }
 
 /// Provider for current match index.
 @riverpod
-int? currentMatchIndex(CurrentMatchIndexRef ref) {
+int? currentMatchIndex(Ref ref) {
   return ref.watch(searchControllerProvider.select((s) => s.currentMatchIndex));
 }
 
 /// Provider for match count text.
 @riverpod
-String matchCountText(MatchCountTextRef ref) {
+String matchCountText(Ref ref) {
   return ref.watch(searchControllerProvider.select((s) => s.matchCountText));
 }
