@@ -218,6 +218,17 @@ class _FileTreeItem extends StatelessWidget {
     );
   }
 
+  void _showDialogAfterMenu(
+    BuildContext context,
+    void Function(BuildContext) showDialog,
+  ) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (context.mounted) {
+        showDialog(context);
+      }
+    });
+  }
+
   void _showContextMenu(BuildContext context, Offset position) {
     final theme = Theme.of(context);
 
@@ -235,7 +246,7 @@ class _FileTreeItem extends StatelessWidget {
         ),
         const PopupMenuDivider(),
         PopupMenuItem(
-          onTap: () => onNewFile?.call(entry.path),
+          onTap: () => _showDialogAfterMenu(context, _showNewFileDialog),
           child: Row(
             children: [
               Icon(
@@ -249,7 +260,7 @@ class _FileTreeItem extends StatelessWidget {
           ),
         ),
         PopupMenuItem(
-          onTap: () => onNewFolder?.call(entry.path),
+          onTap: () => _showDialogAfterMenu(context, _showNewFolderDialog),
           child: Row(
             children: [
               Icon(
@@ -265,10 +276,7 @@ class _FileTreeItem extends StatelessWidget {
         const PopupMenuDivider(),
       ],
       PopupMenuItem(
-        onTap: () => Future.delayed(
-          const Duration(milliseconds: 100),
-          () => _showRenameDialog(context),
-        ),
+        onTap: () => _showDialogAfterMenu(context, _showRenameDialog),
         child: Row(
           children: [
             Icon(Icons.edit, size: 18, color: theme.colorScheme.onSurface),
@@ -278,10 +286,7 @@ class _FileTreeItem extends StatelessWidget {
         ),
       ),
       PopupMenuItem(
-        onTap: () => Future.delayed(
-          const Duration(milliseconds: 100),
-          () => _showDeleteConfirmation(context),
-        ),
+        onTap: () => _showDialogAfterMenu(context, _showDeleteConfirmation),
         child: Row(
           children: [
             Icon(Icons.delete, size: 18, color: theme.colorScheme.error),
@@ -304,12 +309,100 @@ class _FileTreeItem extends StatelessWidget {
     );
   }
 
+  void _showNewFileDialog(BuildContext context) {
+    final controller = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('New File'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'File name',
+            hintText: 'Enter file name (e.g., note.md)',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            if (value.isNotEmpty) {
+              final newPath = '${entry.path}/$value';
+              onNewFile?.call(newPath);
+            }
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final fileName = controller.text.trim();
+              if (fileName.isNotEmpty) {
+                final newPath = '${entry.path}/$fileName';
+                onNewFile?.call(newPath);
+              }
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNewFolderDialog(BuildContext context) {
+    final controller = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('New Folder'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Folder name',
+            hintText: 'Enter folder name',
+            border: OutlineInputBorder(),
+          ),
+          onSubmitted: (value) {
+            if (value.isNotEmpty) {
+              final newPath = '${entry.path}/$value';
+              onNewFolder?.call(newPath);
+            }
+            Navigator.of(dialogContext).pop();
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final folderName = controller.text.trim();
+              if (folderName.isNotEmpty) {
+                final newPath = '${entry.path}/$folderName';
+                onNewFolder?.call(newPath);
+              }
+              Navigator.of(dialogContext).pop();
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showRenameDialog(BuildContext context) {
     final controller = TextEditingController(text: entry.name);
 
-    showDialog(
+    showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Rename'),
         content: TextField(
           controller: controller,
@@ -322,12 +415,12 @@ class _FileTreeItem extends StatelessWidget {
             if (value.isNotEmpty && value != entry.name) {
               onRename?.call(entry.path, value);
             }
-            Navigator.of(context).pop();
+            Navigator.of(dialogContext).pop();
           },
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
@@ -336,7 +429,7 @@ class _FileTreeItem extends StatelessWidget {
               if (newName.isNotEmpty && newName != entry.name) {
                 onRename?.call(entry.path, newName);
               }
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
             },
             child: const Text('Rename'),
           ),
@@ -346,24 +439,24 @@ class _FileTreeItem extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(BuildContext context) {
-    showDialog(
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Confirm Delete'),
         content: Text('Are you sure you want to delete "${entry.name}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           FilledButton(
             onPressed: () {
               onDelete?.call(entry.path);
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
             },
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
+            style: FilledButton.styleFrom(backgroundColor: colorScheme.error),
             child: const Text('Delete'),
           ),
         ],

@@ -28,6 +28,12 @@ class OpenFile with _$OpenFile {
     /// Whether the file has unsaved changes.
     @Default(false) bool isDirty,
 
+    /// Whether the file is currently being saved.
+    @Default(false) bool isSaving,
+
+    /// Error message if saving failed.
+    String? saveError,
+
     /// Current cursor position in the file.
     @JsonKey(toJson: _cursorPositionToJson, fromJson: _cursorPositionFromJson)
     CursorPosition? cursorPosition,
