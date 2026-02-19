@@ -1,6 +1,8 @@
 /// Editor state management using Riverpod.
 library;
 
+import 'dart:async';
+
 import 'package:path/path.dart' as path;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -10,11 +12,15 @@ import 'package:app_notes/services/file_service.dart';
 
 part 'editor_state.g.dart';
 
+/// Auto-save debounce duration.
+const autoSaveDebounceDuration = Duration(seconds: 2);
+
 /// Editor state for managing open files and editing operations.
 @riverpod
 class EditorState extends _$EditorState {
   FileService? _fileService;
   String? _activeFilePath;
+  final Map<String, Timer> _autoSaveTimers = {};
 
   FileService get _service => _fileService ??= FileService();
 
@@ -51,6 +57,8 @@ class EditorState extends _$EditorState {
       content: content,
       originalContent: content,
       isDirty: false,
+      isSaving: false,
+      saveError: null,
       cursorPosition: const CursorPosition(),
     );
 
@@ -66,6 +74,9 @@ class EditorState extends _$EditorState {
 
   /// Close a file by path.
   Future<void> closeFile(String filePath) async {
+    // Cancel any pending auto-save for this file
+    _cancelAutoSave(filePath);
+
     state = state.where((f) => f.path != filePath).toList();
 
     // If we closed the active file, set another one active
@@ -76,30 +87,102 @@ class EditorState extends _$EditorState {
 
   /// Save a file by path.
   Future<bool> saveFile(String filePath) async {
-    final file = state.where((f) => f.path == filePath).firstOrNull;
-    if (file == null) return false;
+    final index = state.indexWhere((f) => f.path == filePath);
+    if (index == -1) return false;
 
-    final success = await _service.writeFile(filePath, file.content);
-    if (success) {
-      state = state.map((f) {
-        if (f.path == filePath) {
-          return f.copyWith(originalContent: f.content, isDirty: false);
-        }
-        return f;
-      }).toList();
+    final file = state[index];
+    if (!file.isDirty) return true;
+
+    // Set saving state
+    _updateFileState(index, file.copyWith(isSaving: true, saveError: null));
+
+    try {
+      final success = await _service.writeFile(filePath, file.content);
+
+      if (success) {
+        // Update state to saved
+        _updateFileState(
+          index,
+          file.copyWith(
+            originalContent: file.content,
+            isDirty: false,
+            isSaving: false,
+            saveError: null,
+          ),
+        );
+        return true;
+      } else {
+        // Save failed
+        _updateFileState(
+          index,
+          file.copyWith(isSaving: false, saveError: 'Failed to save file'),
+        );
+        return false;
+      }
+    } catch (e) {
+      // Save failed with error
+      _updateFileState(
+        index,
+        file.copyWith(isSaving: false, saveError: e.toString()),
+      );
+      return false;
     }
-    return success;
   }
 
-  /// Update content of a file.
+  /// Update content of a file with auto-save.
   void updateContent(String filePath, String content) {
-    state = state.map((f) {
-      if (f.path == filePath) {
-        final isDirty = f.originalContent != content;
-        return f.copyWith(content: content, isDirty: isDirty);
-      }
-      return f;
-    }).toList();
+    final index = state.indexWhere((f) => f.path == filePath);
+    if (index == -1) return;
+
+    final file = state[index];
+    final isDirty = file.originalContent != content;
+
+    state = [
+      ...state.sublist(0, index),
+      file.copyWith(
+        content: content,
+        isDirty: isDirty,
+        saveError: null, // Clear any previous error
+      ),
+      ...state.sublist(index + 1),
+    ];
+
+    // Schedule auto-save if content is dirty
+    if (isDirty) {
+      _scheduleAutoSave(filePath);
+    }
+  }
+
+  /// Schedule auto-save with debounce.
+  void _scheduleAutoSave(String filePath) {
+    _cancelAutoSave(filePath);
+    _autoSaveTimers[filePath] = Timer(autoSaveDebounceDuration, () {
+      saveFile(filePath);
+      _autoSaveTimers.remove(filePath);
+    });
+  }
+
+  /// Cancel pending auto-save for a specific file.
+  void _cancelAutoSave(String filePath) {
+    _autoSaveTimers[filePath]?.cancel();
+    _autoSaveTimers.remove(filePath);
+  }
+
+  /// Cancel all pending auto-saves.
+  void _cancelAllAutoSaves() {
+    for (final timer in _autoSaveTimers.values) {
+      timer.cancel();
+    }
+    _autoSaveTimers.clear();
+  }
+
+  /// Helper to update a single file in state.
+  void _updateFileState(int index, OpenFile updatedFile) {
+    state = [
+      ...state.sublist(0, index),
+      updatedFile,
+      ...state.sublist(index + 1),
+    ];
   }
 
   /// Set the active file.
@@ -137,6 +220,7 @@ class EditorState extends _$EditorState {
 
   /// Close all files.
   void closeAll() {
+    _cancelAllAutoSaves();
     state = [];
     _activeFilePath = null;
   }
@@ -144,6 +228,17 @@ class EditorState extends _$EditorState {
   /// Check if any file has unsaved changes.
   bool get hasAnyUnsavedChanges {
     return state.any((f) => f.isDirty || f.originalContent != f.content);
+  }
+
+  /// Check if any file is currently being saved.
+  bool get isAnyFileSaving {
+    return state.any((f) => f.isSaving);
+  }
+
+  /// Get the save error for a specific file.
+  String? getSaveError(String filePath) {
+    final file = state.where((f) => f.path == filePath).firstOrNull;
+    return file?.saveError;
   }
 }
 
@@ -175,4 +270,10 @@ OpenFile? activeEditorFile(ActiveEditorFileRef ref) {
 @riverpod
 bool hasUnsavedChangesGlobally(HasUnsavedChangesGloballyRef ref) {
   return ref.watch(editorStateProvider.notifier).hasAnyUnsavedChanges;
+}
+
+/// Whether any file is currently being saved.
+@riverpod
+bool isAnyFileSaving(IsAnyFileSavingRef ref) {
+  return ref.watch(editorStateProvider.notifier).isAnyFileSaving;
 }

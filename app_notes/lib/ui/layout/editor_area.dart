@@ -2,8 +2,10 @@
 library;
 
 import 'package:app_notes/models/open_file.dart';
+import 'package:app_notes/state/app_state.dart';
 import 'package:app_notes/state/editor_state.dart';
 import 'package:app_notes/state/preview_state.dart';
+import 'package:app_notes/ui/layout/status_bar.dart';
 import 'package:app_notes/ui/widgets/markdown_editor.dart';
 import 'package:app_notes/ui/widgets/markdown_preview.dart';
 import 'package:flutter/material.dart';
@@ -11,12 +13,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Editor area widget for displaying and editing file content.
-class EditorArea extends ConsumerWidget {
+class EditorArea extends ConsumerStatefulWidget {
   /// Creates the editor area.
   const EditorArea({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EditorArea> createState() => _EditorAreaState();
+}
+
+class _EditorAreaState extends ConsumerState<EditorArea> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize preview state from settings after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final settings = ref.read(appStateProvider);
+      ref.read(previewStateProvider.notifier).initializeFromSettings(settings);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final activeFile = ref.watch(activeEditorFileProvider);
     final openFiles = ref.watch(editorStateProvider);
     final showPreview = ref.watch(previewStateProvider);
@@ -36,6 +53,10 @@ class EditorArea extends ConsumerWidget {
         ): const _PreviousTabIntent(),
         LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyW):
             const _CloseTabIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS):
+            const _SaveFileIntent(),
+        LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.backslash):
+            const _TogglePreviewIntent(),
       },
       child: Actions(
         actions: {
@@ -47,6 +68,12 @@ class EditorArea extends ConsumerWidget {
           ),
           _CloseTabIntent: CallbackAction<_CloseTabIntent>(
             onInvoke: (_) => _closeCurrentTab(ref),
+          ),
+          _SaveFileIntent: CallbackAction<_SaveFileIntent>(
+            onInvoke: (_) => _saveCurrentFile(ref, context),
+          ),
+          _TogglePreviewIntent: CallbackAction<_TogglePreviewIntent>(
+            onInvoke: (_) => _togglePreview(ref),
           ),
         },
         child: Focus(
@@ -63,6 +90,7 @@ class EditorArea extends ConsumerWidget {
                 Expanded(
                   child: _buildEditorPreview(activeFile.path, showPreview),
                 ),
+                const StatusBar(),
               ],
             ],
           ),
@@ -102,6 +130,50 @@ class EditorArea extends ConsumerWidget {
     }
   }
 
+  void _togglePreview(WidgetRef ref) {
+    final newState = !ref.read(previewStateProvider);
+    ref.read(previewStateProvider.notifier).setVisible(newState);
+    // Save to settings
+    ref.read(appStateProvider.notifier).setShowPreview(newState);
+  }
+
+  Future<void> _saveCurrentFile(WidgetRef ref, BuildContext context) async {
+    final activePath = ref.read(activeEditorFilePathProvider);
+    if (activePath == null) return;
+
+    final editorNotifier = ref.read(editorStateProvider.notifier);
+    final hasChanges = editorNotifier.hasUnsavedChanges(activePath);
+
+    if (!hasChanges) return;
+
+    final success = await editorNotifier.saveFile(activePath);
+
+    if (!context.mounted) return;
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('File saved'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } else {
+      final error = editorNotifier.getSaveError(activePath);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Save failed: ${error ?? 'Unknown error'}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 3),
+          action: SnackBarAction(
+            label: 'Retry',
+            textColor: Colors.white,
+            onPressed: () => _saveCurrentFile(ref, context),
+          ),
+        ),
+      );
+    }
+  }
+
   Widget _buildTabBar(
     BuildContext context,
     WidgetRef ref,
@@ -138,7 +210,6 @@ class EditorArea extends ConsumerWidget {
     int index,
     OpenFile? activeFile,
   ) {
-    final theme = Theme.of(context);
     final file = files[index];
     final isActive = file.path == activeFile?.path;
     final hasChanges = ref
@@ -183,15 +254,13 @@ class EditorArea extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Preview toggle button
-          IconButton(
-            icon: Icon(
-              showPreview ? Icons.visibility : Icons.visibility_off,
-              size: 18,
-            ),
-            tooltip: showPreview ? 'Hide Preview' : 'Show Preview',
-            onPressed: () {
-              ref.read(previewStateProvider.notifier).toggle();
-            },
+          _ToolbarButton(
+            icon: showPreview ? Icons.visibility : Icons.visibility_off,
+            tooltip: showPreview
+                ? 'Hide Preview (Ctrl+\\)'
+                : 'Show Preview (Ctrl+\\)',
+            isActive: showPreview,
+            onPressed: () => _togglePreview(ref),
           ),
         ],
       ),
@@ -228,38 +297,24 @@ class EditorArea extends ConsumerWidget {
               ),
             ),
           const Spacer(),
-          // Preview toggle button
-          IconButton(
-            onPressed: () {
-              ref.read(previewStateProvider.notifier).toggle();
-            },
-            icon: Icon(
-              showPreview ? Icons.visibility : Icons.visibility_off,
-              size: 20,
-              color: showPreview ? theme.colorScheme.primary : null,
-            ),
-            tooltip: showPreview ? 'Hide Preview' : 'Show Preview',
+          // Preview toggle button in toolbar
+          _ToolbarButton(
+            icon: showPreview ? Icons.visibility : Icons.visibility_off,
+            tooltip: showPreview
+                ? 'Hide Preview (Ctrl+\\)'
+                : 'Show Preview (Ctrl+\\)',
+            isActive: showPreview,
+            onPressed: () => _togglePreview(ref),
           ),
           const SizedBox(width: 8),
           // Save button
           FilledButton.icon(
-            onPressed: hasChanges
-                ? () async {
-                    await ref
-                        .read(editorStateProvider.notifier)
-                        .saveFile(file.path);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('File saved'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    }
-                  }
-                : null,
+            onPressed: hasChanges ? () => _saveCurrentFile(ref, context) : null,
             icon: const Icon(Icons.save, size: 18),
             label: const Text('Save'),
+            style: FilledButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+            ),
           ),
         ],
       ),
@@ -267,19 +322,14 @@ class EditorArea extends ConsumerWidget {
   }
 
   Widget _buildEditorPreview(String filePath, bool showPreview) {
-    return Row(
-      children: [
-        // Editor
-        Expanded(
-          flex: showPreview ? 1 : 2,
-          child: MarkdownEditor(filePath: filePath),
-        ),
-        // Preview (optional)
-        if (showPreview) ...[
-          const VerticalDivider(width: 1),
-          Expanded(child: MarkdownPreview(filePath: filePath)),
-        ],
-      ],
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 250),
+      child: showPreview
+          ? _SplitView(key: const ValueKey('split'), filePath: filePath)
+          : _EditorOnlyView(
+              key: const ValueKey('editor_only'),
+              filePath: filePath,
+            ),
     );
   }
 
@@ -302,7 +352,91 @@ class EditorArea extends ConsumerWidget {
               color: theme.colorScheme.onSurface.withAlpha(128),
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Use Ctrl+\\ to toggle preview panel',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withAlpha(76),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// Split view with editor and preview side by side.
+class _SplitView extends StatelessWidget {
+  const _SplitView({super.key, required this.filePath});
+
+  final String filePath;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Editor - takes half the space
+        Expanded(child: MarkdownEditor(filePath: filePath)),
+        // Vertical divider
+        const VerticalDivider(width: 1),
+        // Preview - takes half the space
+        Expanded(child: MarkdownPreview(filePath: filePath)),
+      ],
+    );
+  }
+}
+
+/// Editor only view when preview is hidden.
+class _EditorOnlyView extends StatelessWidget {
+  const _EditorOnlyView({super.key, required this.filePath});
+
+  final String filePath;
+
+  @override
+  Widget build(BuildContext context) {
+    return MarkdownEditor(filePath: filePath);
+  }
+}
+
+/// Toolbar button with consistent styling.
+class _ToolbarButton extends StatelessWidget {
+  const _ToolbarButton({
+    required this.icon,
+    required this.tooltip,
+    this.isActive = false,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final bool isActive;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: isActive
+            ? theme.colorScheme.primaryContainer
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(4),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child: Icon(
+              icon,
+              size: 20,
+              color: isActive
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface.withAlpha(178),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -515,4 +649,12 @@ class _PreviousTabIntent extends Intent {
 
 class _CloseTabIntent extends Intent {
   const _CloseTabIntent();
+}
+
+class _TogglePreviewIntent extends Intent {
+  const _TogglePreviewIntent();
+}
+
+class _SaveFileIntent extends Intent {
+  const _SaveFileIntent();
 }
